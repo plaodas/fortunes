@@ -10,6 +10,9 @@ jobs:
   test:
     name: Run frontend tests
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
     defaults:
       run:
         working-directory: frontend
@@ -52,11 +55,13 @@ jobs:
           path: frontend/reports/junit.xml
 
       - name: Annotate test results in PR
-        if: github.event_name == 'pull_request'
+        # Only run the reporter for PRs with the branch in the same repository
+        # (forked PRs cannot create check runs using the default token)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/test-reporter@v1
         with:
           name: frontend-tests
           path: frontend/reports/junit.xml
-          reporter: junit
+          reporter: jest-junit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

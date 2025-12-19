@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Modal from '../components/Modal'
+import FiveElementChart from '../components/FiveElementChart'
 
 type NameAnalysis = {
   tenkaku?: number
@@ -31,21 +32,63 @@ export default function Home(): JSX.Element {
   const [name, setName] = useState<string>('')
   const [date, setDate] = useState<string>('1990-01-01')
   const [hour, setHour] = useState<number>(12)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<string | null>(null)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [history, setHistory] = useState<AnalysisOut[]>([])
   const [selected, setSelected] = useState<AnalysisOut | null>(null)
 
+  const isFormValid = !nameError && !dateError && name.trim().length > 0
+
   useEffect(() => {
     fetchHistory()
   }, [])
+  function runValidation() {
+    // name: at least 2 characters
+    if (name.trim().length === 0) {
+      setNameError('名前を入力してください')
+    } else if (name.trim().length < 2) {
+      setNameError('名前は2文字以上で入力してください')
+    } else {
+      setNameError(null)
+    }
+
+    // date: valid format and not in the future
+    const parsed = Date.parse(date)
+    if (isNaN(parsed)) {
+      setDateError('有効な日付を選択してください')
+    } else if (parsed > Date.now()) {
+      setDateError('未来の日付は指定できません')
+    } else {
+      setDateError(null)
+    }
+  }
+
+  useEffect(() => {
+    runValidation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, date])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+
+    // synchronous local validation to decide whether to submit
+    const nameValid = name.trim().length >= 2
+    const parsed = Date.parse(date)
+    const dateValid = !isNaN(parsed) && parsed <= Date.now()
+
+    if (!nameValid || !dateValid) {
+      // set errors for user feedback
+      runValidation()
+      return
+    }
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, birth_date: date, birth_hour: Number(hour) }),
     })
+
     const body = await res.json()
     setResult(body.result)
     fetchHistory()
@@ -63,22 +106,7 @@ export default function Home(): JSX.Element {
     }
   }
 
-  function FiveElementChart(analysis?: NameAnalysis | null) {
-    if (!analysis) return null
-    const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
-    const labels = ['Wood', 'Fire', 'Earth', 'Metal', 'Water']
-    const max = Math.max(...vals, 1)
-    return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'end', height: 120 }}>
-        {vals.map((v, i) => (
-          <div key={i} style={{ textAlign: 'center' }}>
-            <div style={{ width: 40, height: Math.round((v / max) * 100), background: '#4f46e5', margin: '0 auto' }} />
-            <div style={{ fontSize: 12 }}>{labels[i]}</div>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  // FiveElementChart component moved to components/FiveElementChart.tsx
 
   return (
     <main className="container">
@@ -88,19 +116,49 @@ export default function Home(): JSX.Element {
         <form onSubmit={submit} style={{ marginTop: 8 }}>
           <div className="form-grid">
             <div className="form-row">
-              <label>Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} required />
+              <label htmlFor="name">名前</label>
+              <input
+                id="name"
+                type="text"
+                className={`input ${nameError ? 'invalid' : ''}`}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                aria-invalid={!!nameError}
+                aria-describedby={nameError ? 'name-error' : undefined}
+                required
+              />
+              {nameError && <div id="name-error" className="error-text">{nameError}</div>}
             </div>
             <div className="form-row">
-              <label>Birth date</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <label htmlFor="birth-date">生年月日</label>
+              <input
+                id="birth-date"
+                type="date"
+                className={`input ${dateError ? 'invalid' : ''}`}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                aria-invalid={!!dateError}
+                aria-describedby={dateError ? 'date-error' : undefined}
+                required
+              />
+              {dateError && <div id="date-error" className="error-text">{dateError}</div>}
             </div>
             <div className="form-row">
-              <label>Birth hour</label>
-              <input type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
+              <label htmlFor="birth-hour">生まれた時間</label>
+              <select
+                id="birth-hour"
+                className="input"
+                value={String(hour)}
+                onChange={(e) => setHour(Number(e.target.value))}
+                required
+              >
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <option key={i} value={String(i)}>{i}時</option>
+                ))}
+              </select>
             </div>
-            <div style={{ alignSelf: 'end' }}>
-              <button className="btn" type="submit">Analyze</button>
+            <div className="form-action" style={{ alignSelf: 'end' }}>
+              <button className="btn" type="submit" disabled={!isFormValid}>分析する</button>
             </div>
           </div>
         </form>
@@ -116,16 +174,7 @@ export default function Home(): JSX.Element {
             <div className="result-pre">{JSON.stringify(result, null, 2)}</div>
             <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五行バランス</h3>
             <div className="chart">
-              {(() => {
-                const analysis = result.nameAnalysis
-                if (!analysis) return null
-                const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
-                const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
-                const max = Math.max(...vals, 1)
-                return vals.map((v, i) => (
-                  <div key={i} className="bar" style={{ height: `${Math.round((v / max) * 100)}px`, background: colors[i] }} />
-                ))
-              })()}
+              <FiveElementChart analysis={result.nameAnalysis} />
             </div>
           </div>
         </section>
@@ -163,20 +212,7 @@ export default function Home(): JSX.Element {
         </>} onClose={() => setSelected(null)}>
           <h4 className="font-semibold">五行バランス</h4>
           <div className="chart">
-            {(() => {
-              const analysis = selected.result?.nameAnalysis
-              if (!analysis) return null
-              const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
-              const labels = ['木','火','土','金','水']
-              const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
-              const max = Math.max(...vals, 1)
-              return vals.map((v,i) => (
-                <div key={i} style={{ textAlign:'center' }}>
-                  <div className="bar" style={{ height: `${Math.round((v/max)*100)}px`, background: colors[i], margin:'0 auto' }} />
-                  <div className="muted mt-2">{labels[i]}</div>
-                </div>
-              ))
-            })()}
+            <FiveElementChart analysis={selected.result?.nameAnalysis} />
           </div>
           <div style={{ marginTop: 16 }}>
             <h4 className="font-semibold">詳細 JSON</h4>
