@@ -80,8 +80,9 @@ export default function Home(): JSX.Element {
 
   return (
     <main className="container">
-      <div className="card">
-        <h1>Fortunes - MVP</h1>
+      <div className="hero card">
+        <h1 className="title">Fortunes</h1>
+        <p className="muted" style={{ marginTop: 8 }}>四柱推命と姓名判断から本当のあなたを暴きます</p>
         <form onSubmit={submit} style={{ marginTop: 8 }}>
           <div className="form-grid">
             <div className="form-row">
@@ -106,17 +107,21 @@ export default function Home(): JSX.Element {
       {result && (
         <section style={{ marginTop: 16 }}>
           <div className="card">
-            <h2>Result</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className="text-2xl font-bold">Result</h2>
+              <div className="muted">分析日時: {new Date().toLocaleString()}</div>
+            </div>
             <div className="result-pre">{JSON.stringify(result, null, 2)}</div>
-            <h3 style={{ marginTop: 10 }}>五行バランス</h3>
+            <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五行バランス</h3>
             <div className="chart">
               {(() => {
                 const analysis = result.nameAnalysis
                 if (!analysis) return null
                 const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
+                const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
                 const max = Math.max(...vals, 1)
                 return vals.map((v, i) => (
-                  <div key={i} className="bar" style={{ height: `${Math.round((v / max) * 100)}px` }} />
+                  <div key={i} className="bar" style={{ height: `${Math.round((v / max) * 100)}px`, background: colors[i] }} />
                 ))
               })()}
             </div>
