@@ -23,6 +23,7 @@ services:
     working_dir: /app
     volumes:
       - ./frontend:/app
+      - next_build:/app/.next
       - /app/node_modules
     ports:
       - 3000:3000
@@ -32,3 +33,5 @@ services:
 
 volumes:
   db_data:
+
+  next_build:

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import Modal from '../components/Modal'
 
 type NameAnalysis = {
   tenkaku?: number
@@ -32,6 +33,7 @@ export default function Home(): JSX.Element {
   const [hour, setHour] = useState<number>(12)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [history, setHistory] = useState<AnalysisOut[]>([])
+  const [selected, setSelected] = useState<AnalysisOut | null>(null)
 
   useEffect(() => {
     fetchHistory()
@@ -134,7 +136,12 @@ export default function Home(): JSX.Element {
           <h2>History</h2>
           <div className="history">
             {history.map((h) => (
-              <div key={h.id} className="history-item">
+              <button
+                key={h.id}
+                className="history-item text-left"
+                onClick={() => setSelected(h)}
+                aria-haspopup="dialog"
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong>{h.name}</strong>
@@ -143,10 +150,39 @@ export default function Home(): JSX.Element {
                   <div className="muted">#{h.id}</div>
                 </div>
                 <div className="summary">{h.result?.nameAnalysis?.summary}</div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
+      )}
+
+      {selected && (
+        <Modal title={<>
+          <div>{selected.name}</div>
+          <div className="muted">{selected.birth_date} · {selected.birth_hour}時</div>
+        </>} onClose={() => setSelected(null)}>
+          <h4 className="font-semibold">五行バランス</h4>
+          <div className="chart">
+            {(() => {
+              const analysis = selected.result?.nameAnalysis
+              if (!analysis) return null
+              const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
+              const labels = ['木','火','土','金','水']
+              const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
+              const max = Math.max(...vals, 1)
+              return vals.map((v,i) => (
+                <div key={i} style={{ textAlign:'center' }}>
+                  <div className="bar" style={{ height: `${Math.round((v/max)*100)}px`, background: colors[i], margin:'0 auto' }} />
+                  <div className="muted mt-2">{labels[i]}</div>
+                </div>
+              ))
+            })()}
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <h4 className="font-semibold">詳細 JSON</h4>
+            <pre className="result-pre">{JSON.stringify(selected.result, null, 2)}</pre>
+          </div>
+        </Modal>
       )}
     </main>
   )
