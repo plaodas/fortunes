@@ -79,41 +79,68 @@ export default function Home(): JSX.Element {
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 720, margin: '0 auto' }}>
-      <h1>Fortunes - MVP</h1>
-      <form onSubmit={submit} style={{ display: 'grid', gap: 8, maxWidth: 420 }}>
-        <label>
-          Name <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-        <label>
-          Birth date <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </label>
-        <label>
-          Birth hour <input type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
-        </label>
-        <button type="submit">Analyze</button>
-      </form>
+    <main className="container">
+      <div className="card">
+        <h1>Fortunes - MVP</h1>
+        <form onSubmit={submit} style={{ marginTop: 8 }}>
+          <div className="form-grid">
+            <div className="form-row">
+              <label>Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+            <div className="form-row">
+              <label>Birth date</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            </div>
+            <div className="form-row">
+              <label>Birth hour</label>
+              <input type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
+            </div>
+            <div style={{ alignSelf: 'end' }}>
+              <button className="btn" type="submit">Analyze</button>
+            </div>
+          </div>
+        </form>
+      </div>
 
       {result && (
-        <section style={{ marginTop: 24 }}>
-          <h2>Result</h2>
-          <pre style={{ background: '#f3f4f6', padding: 12 }}>{JSON.stringify(result, null, 2)}</pre>
-          <h3>五行バランス (placeholder)</h3>
-          {FiveElementChart(result.nameAnalysis)}
+        <section style={{ marginTop: 16 }}>
+          <div className="card">
+            <h2>Result</h2>
+            <div className="result-pre">{JSON.stringify(result, null, 2)}</div>
+            <h3 style={{ marginTop: 10 }}>五行バランス</h3>
+            <div className="chart">
+              {(() => {
+                const analysis = result.nameAnalysis
+                if (!analysis) return null
+                const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
+                const max = Math.max(...vals, 1)
+                return vals.map((v, i) => (
+                  <div key={i} className="bar" style={{ height: `${Math.round((v / max) * 100)}px` }} />
+                ))
+              })()}
+            </div>
+          </div>
         </section>
       )}
 
       {history.length > 0 && (
-        <section style={{ marginTop: 24 }}>
+        <section style={{ marginTop: 16 }}>
           <h2>History</h2>
-          <ul>
+          <div className="history">
             {history.map((h) => (
-              <li key={h.id} style={{ marginBottom: 8 }}>
-                <strong>{h.name}</strong> — {h.birth_date} ({h.birth_hour}時)
-                <div style={{ fontSize: 12, color: '#374151' }}>{h.result?.nameAnalysis?.summary}</div>
-              </li>
+              <div key={h.id} className="history-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong>{h.name}</strong>
+                    <div className="muted">{h.birth_date} · {h.birth_hour}時</div>
+                  </div>
+                  <div className="muted">#{h.id}</div>
+                </div>
+                <div className="summary">{h.result?.nameAnalysis?.summary}</div>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
     </main>
