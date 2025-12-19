@@ -6,7 +6,8 @@ type Props = {
   children: React.ReactNode
 }
 
-function getFocusableElements(el: HTMLElement) {
+function getFocusableElements(el?: HTMLElement | null) {
+  if (!el) return [] as HTMLElement[]
   const selectors = [
     'a[href]',
     'button:not([disabled])',
