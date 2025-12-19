@@ -10,6 +10,16 @@ module.exports = {
       tsconfig: 'tsconfig.jest.json'
     }
   },
+  reporters: [
+    'default',
+    [
+      'jest-junit',
+      {
+        outputDirectory: '<rootDir>/reports',
+        outputName: 'junit.xml'
+      }
+    ]
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
