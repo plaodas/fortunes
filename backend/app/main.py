@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+import time
 from . import db, models
 from datetime import datetime
 import json
@@ -35,19 +37,32 @@ def apply_migrations():
     local dev where a DB may not be present).
     """
     migrations_file = os.path.join(os.path.dirname(__file__), "..", "migrations", "init.sql")
-    try:
-        if os.path.exists(migrations_file):
-            with open(migrations_file, "r", encoding="utf-8") as f:
-                sql = f.read()
-            # Try to execute migration SQL using SQLAlchemy engine
+    if not os.path.exists(migrations_file):
+        logger.info("No migrations file found at %s", migrations_file)
+        return
+
+    with open(migrations_file, "r", encoding="utf-8") as f:
+        sql = f.read()
+
+    # Retry loop: wait for DB to become available before applying migrations
+    max_attempts = int(os.getenv("MIGRATE_MAX_ATTEMPTS", "15"))
+    delay_seconds = float(os.getenv("MIGRATE_DELAY_SECONDS", "2"))
+    attempt = 0
+    while attempt < max_attempts:
+        attempt += 1
+        try:
             with db.engine.begin() as conn:
                 conn.exec_driver_sql(sql)
             logger.info("Applied migrations from %s", migrations_file)
-        else:
-            logger.info("No migrations file found at %s", migrations_file)
-    except Exception as e:
-        # If DB isn't available yet or SQL fails, just log and continue.
-        logger.warning("Could not apply migrations: %s", e)
+            return
+        except OperationalError as oe:
+            logger.warning("DB not ready (attempt %d/%d): %s", attempt, max_attempts, oe)
+            time.sleep(delay_seconds)
+        except Exception as e:
+            logger.error("Failed to apply migrations: %s", e)
+            return
+
+    logger.error("Exceeded max attempts (%d) applying migrations; giving up.", max_attempts)
 
 
 @app.get("/health")
