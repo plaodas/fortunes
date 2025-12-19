@@ -16,10 +16,12 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install backend deps
+        working-directory: backend
         run: |
-          cd backend
           pip install -r requirements.txt
       - name: Run tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
         run: |
-          cd backend
           pytest -q
