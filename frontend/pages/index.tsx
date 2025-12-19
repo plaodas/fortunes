@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Modal from '../components/Modal'
+import FiveElementChart from '../components/FiveElementChart'
 
 type NameAnalysis = {
   tenkaku?: number
@@ -63,22 +64,7 @@ export default function Home(): JSX.Element {
     }
   }
 
-  function FiveElementChart(analysis?: NameAnalysis | null) {
-    if (!analysis) return null
-    const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
-    const labels = ['Wood', 'Fire', 'Earth', 'Metal', 'Water']
-    const max = Math.max(...vals, 1)
-    return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'end', height: 120 }}>
-        {vals.map((v, i) => (
-          <div key={i} style={{ textAlign: 'center' }}>
-            <div style={{ width: 40, height: Math.round((v / max) * 100), background: '#4f46e5', margin: '0 auto' }} />
-            <div style={{ fontSize: 12 }}>{labels[i]}</div>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  // FiveElementChart component moved to components/FiveElementChart.tsx
 
   return (
     <main className="container">
@@ -88,19 +74,19 @@ export default function Home(): JSX.Element {
         <form onSubmit={submit} style={{ marginTop: 8 }}>
           <div className="form-grid">
             <div className="form-row">
-              <label>Name</label>
+              <label>名前</label>
               <input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="form-row">
-              <label>Birth date</label>
+              <label>生年月日</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="form-row">
-              <label>Birth hour</label>
+              <label>出生時間</label>
               <input type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
             </div>
             <div style={{ alignSelf: 'end' }}>
-              <button className="btn" type="submit">Analyze</button>
+              <button className="btn" type="submit">分析する</button>
             </div>
           </div>
         </form>
@@ -116,16 +102,7 @@ export default function Home(): JSX.Element {
             <div className="result-pre">{JSON.stringify(result, null, 2)}</div>
             <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五行バランス</h3>
             <div className="chart">
-              {(() => {
-                const analysis = result.nameAnalysis
-                if (!analysis) return null
-                const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
-                const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
-                const max = Math.max(...vals, 1)
-                return vals.map((v, i) => (
-                  <div key={i} className="bar" style={{ height: `${Math.round((v / max) * 100)}px`, background: colors[i] }} />
-                ))
-              })()}
+              <FiveElementChart analysis={result.nameAnalysis} />
             </div>
           </div>
         </section>
@@ -163,20 +140,7 @@ export default function Home(): JSX.Element {
         </>} onClose={() => setSelected(null)}>
           <h4 className="font-semibold">五行バランス</h4>
           <div className="chart">
-            {(() => {
-              const analysis = selected.result?.nameAnalysis
-              if (!analysis) return null
-              const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
-              const labels = ['木','火','土','金','水']
-              const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
-              const max = Math.max(...vals, 1)
-              return vals.map((v,i) => (
-                <div key={i} style={{ textAlign:'center' }}>
-                  <div className="bar" style={{ height: `${Math.round((v/max)*100)}px`, background: colors[i], margin:'0 auto' }} />
-                  <div className="muted mt-2">{labels[i]}</div>
-                </div>
-              ))
-            })()}
+            <FiveElementChart analysis={selected.result?.nameAnalysis} />
           </div>
           <div style={{ marginTop: 16 }}>
             <h4 className="font-semibold">詳細 JSON</h4>
