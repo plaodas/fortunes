@@ -82,10 +82,20 @@ export default function Home(): JSX.Element {
               <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="form-row">
-              <label>出生時間</label>
-              <input type="number" className="input" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
+              <label htmlFor="birth-hour">生まれた時間</label>
+              <select
+                id="birth-hour"
+                className="input"
+                value={String(hour)}
+                onChange={(e) => setHour(Number(e.target.value))}
+                required
+              >
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <option key={i} value={String(i)}>{i}時</option>
+                ))}
+              </select>
             </div>
-            <div style={{ alignSelf: 'end' }}>
+            <div className="form-action" style={{ alignSelf: 'end' }}>
               <button className="btn" type="submit">分析する</button>
             </div>
           </div>

@@ -18,12 +18,27 @@ body{
 .card{@apply bg-white rounded-2xl shadow-2xl p-6}
 .hero{@apply bg-gradient-to-r from-primary-50 to-accent rounded-2xl p-6 text-slate-900}
 .title{@apply text-4xl md:text-5xl font-extrabold tracking-tight}
-.form-grid{display:grid;gap:14px;grid-template-columns:1fr}
-
-/* On small screens and up, use two columns */
-@media (min-width: 640px) {
-  .form-grid{grid-template-columns:1fr 1fr}
+.form-grid{
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: stretch;
 }
+
+/* Make children full-width on small screens */
+.form-grid > *{
+  flex: 1 1 100%;
+}
+
+/* Two-column layout from medium screens (>=768px) */
+@media (min-width: 768px) {
+  .form-grid > *{
+    flex: 1 1 calc(50% - 7px);
+  }
+}
+
+/* Ensure the action (submit) spans full width */
+.form-action{flex-basis:100%;width:100%;display:block}
 .form-row{display:flex;flex-direction:column}
 label{font-size:14px;color:#475569}
 /* base input styles */
