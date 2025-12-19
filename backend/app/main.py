@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 import time
+from typing import List
+from sqlalchemy.orm import Session
 from . import db, models
 from datetime import datetime
 import json
@@ -27,6 +29,15 @@ class AnalyzeRequest(BaseModel):
     name: str
     birth_date: str  # YYYY-MM-DD
     birth_hour: int  # 0-23
+
+
+class AnalysisOut(BaseModel):
+    id: int
+    name: str
+    birth_date: str
+    birth_hour: int
+    result: dict
+    created_at: str | None = None
 
 
 @app.on_event("startup")
@@ -103,3 +114,23 @@ def analyze(req: AnalyzeRequest):
         logger.warning("Could not persist analysis to DB: %s", e)
 
     return {"input": req.dict(), "result": result}
+
+
+@app.get("/analyses", response_model=List[AnalysisOut])
+def list_analyses(limit: int = 50, db: Session = Depends(db.get_db)):
+    """Return recent analyses ordered by newest first."""
+    with db as session:
+        qs = session.query(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit).all()
+    out = []
+    for a in qs:
+        out.append(
+            AnalysisOut(
+                id=a.id,
+                name=a.name,
+                birth_date=a.birth_date.isoformat(),
+                birth_hour=a.birth_hour,
+                result=a.result,
+                created_at=a.created_at.isoformat() if a.created_at else None,
+            )
+        )
+    return out

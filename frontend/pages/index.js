@@ -5,6 +5,7 @@ export default function Home() {
   const [date, setDate] = useState('1990-01-01')
   const [hour, setHour] = useState(12)
   const [result, setResult] = useState(null)
+  const [history, setHistory] = useState([])
 
   async function submit(e) {
     e.preventDefault()
@@ -15,6 +16,16 @@ export default function Home() {
     })
     const body = await res.json()
     setResult(body.result)
+    // refresh history after successful submit
+    fetchHistory()
+  }
+
+  async function fetchHistory() {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyses`)
+    if (res.ok) {
+      const arr = await res.json()
+      setHistory(arr)
+    }
   }
 
   function FiveElementChart(analysis) {
@@ -51,6 +62,20 @@ export default function Home() {
           <pre style={{background:'#f3f4f6',padding:12}}>{JSON.stringify(result,null,2)}</pre>
           <h3>五行バランス (placeholder)</h3>
           {FiveElementChart(result.nameAnalysis)}
+        </section>
+      )}
+
+      {history.length > 0 && (
+        <section style={{marginTop:24}}>
+          <h2>History</h2>
+          <ul>
+            {history.map(h => (
+              <li key={h.id} style={{marginBottom:8}}>
+                <strong>{h.name}</strong> — {h.birth_date} ({h.birth_hour}時)
+                <div style={{fontSize:12, color:'#374151'}}>{h.result?.nameAnalysis?.summary}</div>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
     </main>

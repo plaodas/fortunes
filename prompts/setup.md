@@ -30,6 +30,6 @@ docker composeで以下の環境をセットアップ
     - テーブル作成、初期データはmigrationファイルで管理
     -
   - DB: PostgreSQL
-  - フロントエンド：React/Next, PWAアプリ
+  - フロントエンド：React/Next, PWAアプリ, TypeScript
 
 githubでのソース管理を前提とし、mainブランチpushの際はGithub actionsでのテストを実施します。
