@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="2" failures="0" errors="0" time="1.898">
-  <testsuite name="Modal" errors="0" failures="0" skipped="0" timestamp="2025-12-19T08:26:29" time="1.625" tests="2">
-    <testcase classname="Modal renders children and closes on Escape" name="Modal renders children and closes on Escape" time="0.034">
-    </testcase>
-    <testcase classname="Modal focus traps inside modal with Tab and Shift+Tab" name="Modal focus traps inside modal with Tab and Shift+Tab" time="0.022">
-    </testcase>
-  </testsuite>
-</testsuites>

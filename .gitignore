@@ -98,3 +98,4 @@ desktop.ini
 .secret.local
 credentials.json
 token.json
+reports/
