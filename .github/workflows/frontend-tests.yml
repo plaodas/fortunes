@@ -10,6 +10,9 @@ jobs:
   test:
     name: Run frontend tests
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
     defaults:
       run:
         working-directory: frontend
