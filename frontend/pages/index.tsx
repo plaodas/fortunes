@@ -75,15 +75,15 @@ export default function Home(): JSX.Element {
           <div className="form-grid">
             <div className="form-row">
               <label>名前</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} required />
+              <input type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="form-row">
               <label>生年月日</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="form-row">
               <label>出生時間</label>
-              <input type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
+              <input type="number" className="input" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} required />
             </div>
             <div style={{ alignSelf: 'end' }}>
               <button className="btn" type="submit">分析する</button>
