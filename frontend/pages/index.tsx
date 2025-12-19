@@ -32,21 +32,63 @@ export default function Home(): JSX.Element {
   const [name, setName] = useState<string>('')
   const [date, setDate] = useState<string>('1990-01-01')
   const [hour, setHour] = useState<number>(12)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<string | null>(null)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [history, setHistory] = useState<AnalysisOut[]>([])
   const [selected, setSelected] = useState<AnalysisOut | null>(null)
 
+  const isFormValid = !nameError && !dateError && name.trim().length > 0
+
   useEffect(() => {
     fetchHistory()
   }, [])
+  function runValidation() {
+    // name: at least 2 characters
+    if (name.trim().length === 0) {
+      setNameError('名前を入力してください')
+    } else if (name.trim().length < 2) {
+      setNameError('名前は2文字以上で入力してください')
+    } else {
+      setNameError(null)
+    }
+
+    // date: valid format and not in the future
+    const parsed = Date.parse(date)
+    if (isNaN(parsed)) {
+      setDateError('有効な日付を選択してください')
+    } else if (parsed > Date.now()) {
+      setDateError('未来の日付は指定できません')
+    } else {
+      setDateError(null)
+    }
+  }
+
+  useEffect(() => {
+    runValidation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, date])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+
+    // synchronous local validation to decide whether to submit
+    const nameValid = name.trim().length >= 2
+    const parsed = Date.parse(date)
+    const dateValid = !isNaN(parsed) && parsed <= Date.now()
+
+    if (!nameValid || !dateValid) {
+      // set errors for user feedback
+      runValidation()
+      return
+    }
+
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, birth_date: date, birth_hour: Number(hour) }),
     })
+
     const body = await res.json()
     setResult(body.result)
     fetchHistory()
@@ -74,12 +116,32 @@ export default function Home(): JSX.Element {
         <form onSubmit={submit} style={{ marginTop: 8 }}>
           <div className="form-grid">
             <div className="form-row">
-              <label>名前</label>
-              <input type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+              <label htmlFor="name">名前</label>
+              <input
+                id="name"
+                type="text"
+                className={`input ${nameError ? 'invalid' : ''}`}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                aria-invalid={!!nameError}
+                aria-describedby={nameError ? 'name-error' : undefined}
+                required
+              />
+              {nameError && <div id="name-error" className="error-text">{nameError}</div>}
             </div>
             <div className="form-row">
-              <label>生年月日</label>
-              <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <label htmlFor="birth-date">生年月日</label>
+              <input
+                id="birth-date"
+                type="date"
+                className={`input ${dateError ? 'invalid' : ''}`}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                aria-invalid={!!dateError}
+                aria-describedby={dateError ? 'date-error' : undefined}
+                required
+              />
+              {dateError && <div id="date-error" className="error-text">{dateError}</div>}
             </div>
             <div className="form-row">
               <label htmlFor="birth-hour">生まれた時間</label>
@@ -96,7 +158,7 @@ export default function Home(): JSX.Element {
               </select>
             </div>
             <div className="form-action" style={{ alignSelf: 'end' }}>
-              <button className="btn" type="submit">分析する</button>
+              <button className="btn" type="submit" disabled={!isFormValid}>分析する</button>
             </div>
           </div>
         </form>
