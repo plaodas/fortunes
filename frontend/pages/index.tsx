@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Modal from '../components/Modal'
 import FiveElementChart from '../components/FiveElementChart'
+import FiveGridRadarChart from '../components/FiveGridRadarChart'
 
 type NameAnalysis = {
   tenkaku?: number
@@ -11,11 +12,21 @@ type NameAnalysis = {
   summary?: string
 }
 
+type BirthAnalysis = {
+  wood?: number
+  fire?: number
+  earth?: number
+  metal?: number
+  water?: number
+  summary?: string
+}
+
 type AnalysisResult = {
   year?: string
   month?: string
   day?: string
   hour?: string
+  birthAnalysis?: BirthAnalysis
   nameAnalysis?: NameAnalysis
 }
 
@@ -24,7 +35,8 @@ type AnalysisOut = {
   name: string
   birth_date: string
   birth_hour: number
-  result: AnalysisResult
+  result_birth: BirthAnalysis
+  result_name: NameAnalysis
   created_at?: string | null
 }
 
@@ -174,7 +186,11 @@ export default function Home(): JSX.Element {
             <div className="result-pre">{JSON.stringify(result, null, 2)}</div>
             <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五行バランス</h3>
             <div className="chart">
-              <FiveElementChart analysis={result.nameAnalysis} />
+              <FiveElementChart analysis={result.birthAnalysis} />
+            </div>
+            <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五格バランス</h3>
+            <div className="chart">
+              <FiveGridRadarChart analysis={result.nameAnalysis} />
             </div>
           </div>
         </section>
@@ -182,7 +198,7 @@ export default function Home(): JSX.Element {
 
       {history.length > 0 && (
         <section style={{ marginTop: 16 }}>
-          <h2>History</h2>
+          <h2>過去の分析結果</h2>
           <div className="history">
             {history.map((h) => (
               <button
@@ -194,11 +210,11 @@ export default function Home(): JSX.Element {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong>{h.name}</strong>
-                    <div className="muted">{h.birth_date} · {h.birth_hour}時</div>
+                    <div className="muted">{h.birth_date} · {h.birth_hour}時生まれ</div>
                   </div>
                   <div className="muted">#{h.id}</div>
                 </div>
-                <div className="summary">{h.result?.nameAnalysis?.summary}</div>
+                <div className="summary">{h.result_name?.summary}</div>
               </button>
             ))}
           </div>
@@ -212,11 +228,15 @@ export default function Home(): JSX.Element {
         </>} onClose={() => setSelected(null)}>
           <h4 className="font-semibold">五行バランス</h4>
           <div className="chart">
-            <FiveElementChart analysis={selected.result?.nameAnalysis} />
+            <FiveElementChart analysis={selected.result_birth} />
           </div>
-          <div style={{ marginTop: 16 }}>
+          <h4 style={{ marginTop: 10 }} className="font-semibold">五格バランス</h4>
+          <div className="chart">
+            <FiveGridRadarChart analysis={selected.result_name} />
+          </div>
+          <div style={{ marginTop: 50 }}>
             <h4 className="font-semibold">詳細 JSON</h4>
-            <pre className="result-pre">{JSON.stringify(selected.result, null, 2)}</pre>
+            <pre className="result-pre">{JSON.stringify(selected, null, 2)}</pre>
           </div>
         </Modal>
       )}

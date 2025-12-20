@@ -11,25 +11,26 @@ import { Bar } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
-type NameAnalysis = {
-  tenkaku?: number
-  jinkaku?: number
-  chikaku?: number
-  gaikaku?: number
-  soukaku?: number
+type BirthAnalysis = {
+  wood?: number
+  fire?: number
+  earth?: number
+  metal?: number
+  water?: number
   summary?: string
 }
 
 type Props = {
-  analysis?: NameAnalysis | null
+  analysis?: BirthAnalysis | null
   height?: number
 }
 
-export default function FiveElementChart({ analysis, height = 140 }: Props) {
+export default function FiveElementChart({ analysis, height = 180 }: Props) {
+  // analysis は { wood: 3, fire: 2, earth: 1, metal: 2, water: 0 } のようなオブジェクト
   if (!analysis) return null
 
   const labels = ['木', '火', '土', '金', '水']
-  const vals = [analysis.tenkaku || 0, analysis.jinkaku || 0, analysis.chikaku || 0, analysis.gaikaku || 0, analysis.soukaku || 0]
+  const vals = [analysis.wood || 0, analysis.fire || 0, analysis.earth || 0, analysis.metal || 0, analysis.water || 0]
   const colors = ['#10b981', '#fb923c', '#f59e0b', '#60a5fa', '#a78bfa']
 
   const data = {
@@ -50,7 +51,7 @@ export default function FiveElementChart({ analysis, height = 140 }: Props) {
     maintainAspectRatio: false,
     scales: {
       x: { grid: { display: false }, ticks: { color: '#475569' } },
-      y: { beginAtZero: true, grid: { color: '#eef2ff' }, ticks: { color: '#475569' } },
+      y: { beginAtZero: true, grid: { color: '#eef2ff' }, ticks: { stepSize: 1, color: '#475569' } },
     },
     plugins: {
       legend: { display: false as const },

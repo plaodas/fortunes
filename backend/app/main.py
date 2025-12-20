@@ -36,7 +36,8 @@ class AnalysisOut(BaseModel):
     name: str
     birth_date: str
     birth_hour: int
-    result: dict
+    result_birth: dict
+    result_name: dict
     created_at: str | None = None
 
 
@@ -89,6 +90,14 @@ def analyze(req: AnalyzeRequest):
         "month": "戊寅",
         "day": "辛巳",
         "hour": "乙卯",
+        "birthAnalysis": {
+            "wood": 26,
+            "fire": 15,
+            "earth": 11,
+            "metal": 22,
+            "water": 37,
+            "summary": "「柔軟性・流れ」を意識するとさらに良い",
+        },
         "nameAnalysis": {
             "tenkaku": 26,
             "jinkaku": 15,
@@ -129,7 +138,8 @@ def list_analyses(limit: int = 50, db: Session = Depends(db.get_db)):
                 name=a.name,
                 birth_date=a.birth_date.isoformat(),
                 birth_hour=a.birth_hour,
-                result=a.result,
+                result_name=a.result_name,
+                result_birth=a.result_birth,
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
         )
