@@ -6,8 +6,11 @@ from sqlalchemy.exc import OperationalError
 import time
 from typing import List
 from sqlalchemy.orm import Session
+
+from .entities.birth_analytics import Meishiki
+from .services.calc_meishiki import get_meishiki
 from . import db, models
-from datetime import datetime
+from datetime import date, datetime
 import json
 import os
 import logging
@@ -36,7 +39,8 @@ class AnalysisOut(BaseModel):
     name: str
     birth_date: str
     birth_hour: int
-    result: dict
+    result_birth: dict
+    result_name: dict
     created_at: str | None = None
 
 
@@ -83,13 +87,51 @@ def health():
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
+
+    """Perform fortune analysis based on name and birth date/hour.
+    Returns a dummy result for now.
+    """
+    # TODO:
+    # ここで命式と五行・五格の解析を行う。
+    # 解析ロジックは省略し、ダミーの結果を返す
+
+    birth_date = datetime.fromisoformat(req.birth_date).date()
+    birth_hour = int(req.birth_hour)
+
+    # 命式の取得
+    birth_dt = datetime.combine(birth_date, datetime.min.time()).replace(hour=birth_hour)
+    meishiki: Meishiki = get_meishiki(dt=birth_dt)
+
+    # 五行取得
+
+
+
+
+    # 五格取得
+
+
+
     # Return the dummy result structure specified in the prompt
     result = {
-        "year": "乙卯",
-        "month": "戊寅",
-        "day": "辛巳",
-        "hour": "乙卯",
-        "nameAnalysis": {
+        "birth_analysis": {
+            "meisiki": {
+                "year": meishiki.year,
+                "month": meishiki.month,
+                "day": meishiki.day,
+                "hour": meishiki.hour,
+                "summary": "辛（金）は「宝石のような金属」で、繊細で美意識が高く、こだわりを持つタイプ。巳（火）は金を鍛える火で、試練や努力を通じて磨かれる運勢を示します",
+            },
+            "gogyo":{
+                "wood": 26,
+                "fire": 15,
+                "earth": 11,
+                "metal": 22,
+                "water": 37,
+                "summary": "「木（金を切る）と火（金を溶かす）が多いため、日主の辛（金）は試練を受けやすいが、努力で輝きを増すタイプ。人間関係や環境から刺激を受けて成長する人生。",
+            },
+            "summary": "美意識やこだわりを持ち、周囲から「個性的」「センスがある」と見られやすい。人との縁が強く、交流や人脈が人生のテーマ。試練を通じて磨かれる運勢で、困難を乗り越えるほど輝きが増す。晩年は人間関係に恵まれ、後進を育てる立場に向く。柔軟性・流れ」を意識するとさらに良い",
+        },
+        "name_analysis": {
             "tenkaku": 26,
             "jinkaku": 15,
             "chikaku": 11,
@@ -97,15 +139,18 @@ def analyze(req: AnalyzeRequest):
             "soukaku": 37,
             "summary": "努力家で晩年安定",
         },
+        "summary": "全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。",
     }
 
     # Persist to DB if possible
     try:
         db_obj = models.Analysis(
             name=req.name,
-            birth_date=datetime.fromisoformat(req.birth_date).date(),
-            birth_hour=req.birth_hour,
-            result=result,
+            birth_date=birth_date,
+            birth_hour=birth_hour,
+            result_birth=result["birth_analysis"],
+            result_name=result["name_analysis"],
+            summary=result["summary"],
         )
         with db.SessionLocal() as session:
             session.add(db_obj)
@@ -129,8 +174,22 @@ def list_analyses(limit: int = 50, db: Session = Depends(db.get_db)):
                 name=a.name,
                 birth_date=a.birth_date.isoformat(),
                 birth_hour=a.birth_hour,
-                result=a.result,
+                result_name=json.loads(a.result_name) if isinstance(a.result_name, str) else a.result_name,
+                result_birth=json.loads(a.result_birth) if isinstance(a.result_birth, str) else a.result_birth,
+                summary=a.summary,
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
         )
     return out
+
+
+@app.delete("/analyses/{analysis_id}")
+def delete_analysis(analysis_id: int, db: Session = Depends(db.get_db)):
+    """Delete an analysis by ID."""
+    with db as session:
+        obj = session.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
+        if not obj:
+            return {"status": "not found"}
+        session.delete(obj)
+        session.commit()
+    return {"status": "deleted"}

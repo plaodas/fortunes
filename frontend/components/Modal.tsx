@@ -26,6 +26,10 @@ export default function Modal({ title, onClose, children }: Props) {
   useEffect(() => {
     previouslyFocused.current = document.activeElement as HTMLElement | null
 
+    // prevent background scrolling while modal is open
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
     const container = containerRef.current
     if (!container) return
 
@@ -68,6 +72,8 @@ export default function Modal({ title, onClose, children }: Props) {
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
+      // restore body scroll
+      document.body.style.overflow = prevOverflow
       // restore focus
       try {
         previouslyFocused.current?.focus()
@@ -80,7 +86,7 @@ export default function Modal({ title, onClose, children }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div ref={containerRef} role="dialog" aria-modal="true" className="bg-white rounded-xl shadow-2xl p-6 w-[min(720px,95%)] z-10">
+      <div ref={containerRef} role="dialog" aria-modal="true" className="bg-white rounded-xl shadow-2xl p-6 w-[min(720px,95%)] z-10 max-h-[80vh] overflow-y-auto">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {title && <div className="text-2xl font-bold">{title}</div>}
