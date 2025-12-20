@@ -2,28 +2,6 @@ import React, { useEffect, useState } from 'react'
 import Modal from '../components/Modal'
 import FiveElementChart from '../components/FiveElementChart'
 import FiveGridRadarChart from '../components/FiveGridRadarChart'
-import MeishikiCards from '../components/MeishikiCards'
-
-type Meishiki = {
-  year?: string
-  month?: string
-  day?: string
-  hour?: string
-}
-
-type Gogyo = {
-  wood?: number
-  fire?: number
-  earth?: number
-  metal?: number
-  water?: number
-}
-
-type BirthAnalysis = {
-  meisiki: Meishiki
-  gogyo: Gogyo
-  summary?: string
-}
 
 type NameAnalysis = {
   tenkaku?: number
@@ -34,10 +12,22 @@ type NameAnalysis = {
   summary?: string
 }
 
-type AnalysisResult = {
-  birth_analysis?: BirthAnalysis
-  name_analysis?: NameAnalysis
+type BirthAnalysis = {
+  wood?: number
+  fire?: number
+  earth?: number
+  metal?: number
+  water?: number
   summary?: string
+}
+
+type AnalysisResult = {
+  year?: string
+  month?: string
+  day?: string
+  hour?: string
+  birthAnalysis?: BirthAnalysis
+  nameAnalysis?: NameAnalysis
 }
 
 type AnalysisOut = {
@@ -47,8 +37,7 @@ type AnalysisOut = {
   birth_hour: number
   result_birth: BirthAnalysis
   result_name: NameAnalysis
-  summary: string
-  created_at: string
+  created_at?: string | null
 }
 
 export default function Home(): JSX.Element {
@@ -181,7 +170,7 @@ export default function Home(): JSX.Element {
               </select>
             </div>
             <div className="form-action" style={{ alignSelf: 'end' }}>
-              <button className="btn" type="submit" disabled={!isFormValid}>鑑定する</button>
+              <button className="btn" type="submit" disabled={!isFormValid}>分析する</button>
             </div>
           </div>
         </form>
@@ -191,25 +180,25 @@ export default function Home(): JSX.Element {
         <section style={{ marginTop: 16 }}>
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 className="text-2xl font-bold">鑑定結果</h2>
+              <h2 className="text-2xl font-bold">Result</h2>
+              <div className="muted">分析日時: {new Date().toLocaleString()}</div>
             </div>
-            <div className="meishiki-cards">
-              <MeishikiCards analysis={result.birth_analysis?.meisiki} />
-            </div>
+            <div className="result-pre">{JSON.stringify(result, null, 2)}</div>
+            <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五行バランス</h3>
             <div className="chart">
-              <FiveElementChart analysis={result.birth_analysis?.gogyo} />
+              <FiveElementChart analysis={result.birthAnalysis} />
             </div>
+            <h3 style={{ marginTop: 10 }} className="text-lg font-semibold">五格バランス</h3>
             <div className="chart">
-              <FiveGridRadarChart analysis={result.name_analysis} />
+              <FiveGridRadarChart analysis={result.nameAnalysis} />
             </div>
-            {/* <div className="result-pre">{JSON.stringify(result, null, 2)}</div> */}
           </div>
         </section>
       )}
 
       {history.length > 0 && (
         <section style={{ marginTop: 16 }}>
-          <h2>過去の鑑定</h2>
+          <h2>過去の分析結果</h2>
           <div className="history">
             {history.map((h) => (
               <button
@@ -225,7 +214,7 @@ export default function Home(): JSX.Element {
                   </div>
                   <div className="muted">#{h.id}</div>
                 </div>
-                <div className="summary">{h.summary}</div>
+                <div className="summary">{h.result_name?.summary}</div>
               </button>
             ))}
           </div>
@@ -235,21 +224,20 @@ export default function Home(): JSX.Element {
       {selected && (
         <Modal title={<>
           <div>{selected.name}</div>
-          <div className="muted">{selected.birth_date} · {selected.birth_hour}時生まれ</div>
+          <div className="muted">{selected.birth_date} · {selected.birth_hour}時</div>
         </>} onClose={() => setSelected(null)}>
-          <div className="meishiki-cards">
-            <MeishikiCards analysis={selected.result_birth?.meisiki} />
-          </div>
+          <h4 className="font-semibold">五行バランス</h4>
           <div className="chart">
-            <FiveElementChart analysis={selected.result_birth?.gogyo} />
+            <FiveElementChart analysis={selected.result_birth} />
           </div>
+          <h4 style={{ marginTop: 10 }} className="font-semibold">五格バランス</h4>
           <div className="chart">
             <FiveGridRadarChart analysis={selected.result_name} />
           </div>
-          {/* <div style={{ marginTop: 50 }}>
+          <div style={{ marginTop: 50 }}>
             <h4 className="font-semibold">詳細 JSON</h4>
             <pre className="result-pre">{JSON.stringify(selected, null, 2)}</pre>
-          </div> */}
+          </div>
         </Modal>
       )}
     </main>

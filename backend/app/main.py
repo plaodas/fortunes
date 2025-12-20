@@ -8,7 +8,7 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from .entities.birth_analytics import Meishiki
-from .services.calc_meisiki import get_meishiki
+from .services.calc_meishiki import get_meishiki
 from . import db, models
 from datetime import date, datetime
 import json
@@ -97,8 +97,19 @@ def analyze(req: AnalyzeRequest):
 
     birth_date = datetime.fromisoformat(req.birth_date).date()
     birth_hour = int(req.birth_hour)
+
+    # 命式の取得
     birth_dt = datetime.combine(birth_date, datetime.min.time()).replace(hour=birth_hour)
     meishiki: Meishiki = get_meishiki(dt=birth_dt)
+
+    # 五行取得
+
+
+
+
+    # 五格取得
+
+
 
     # Return the dummy result structure specified in the prompt
     result = {
@@ -170,3 +181,15 @@ def list_analyses(limit: int = 50, db: Session = Depends(db.get_db)):
             )
         )
     return out
+
+
+@app.delete("/analyses/{analysis_id}")
+def delete_analysis(analysis_id: int, db: Session = Depends(db.get_db)):
+    """Delete an analysis by ID."""
+    with db as session:
+        obj = session.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
+        if not obj:
+            return {"status": "not found"}
+        session.delete(obj)
+        session.commit()
+    return {"status": "deleted"}

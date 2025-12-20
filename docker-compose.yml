@@ -16,6 +16,7 @@ services:
     ports:
       - 8000:8000
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: postgres://postgres:password@db:5432/fortunes
     depends_on:
       - db

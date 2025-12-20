@@ -1,13 +1,12 @@
+from datetime import date, datetime
+from ..entities.birth_analytics import Meishiki
+
 # 十干と十二支
 TENKAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
 JUNISHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
 
 # 甲子を基準にした60干支
 KANSHI = [TENKAN[i % 10] + JUNISHI[i % 12] for i in range(60)]
-
-from datetime import date, datetime
-
-from ..entities.birth_analytics import Meishiki
 
 def get_year_pillar(dt: datetime):
     """
