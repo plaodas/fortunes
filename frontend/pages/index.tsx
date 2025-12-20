@@ -129,6 +129,22 @@ export default function Home(): JSX.Element {
     }
   }
 
+  async function deleteAnalysis(id: number) {
+    if (!confirm('この鑑定を削除しますか？')) return
+    try {
+      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyses/${id}`
+      const res = await fetch(url, { method: 'DELETE' })
+      if (res.ok) {
+        setHistory((prev) => prev.filter((h) => h.id !== id))
+        if (selected?.id === id) setSelected(null)
+      } else {
+        console.warn('delete failed', await res.text())
+      }
+    } catch (e) {
+      console.warn('delete error', e)
+    }
+  }
+
   // FiveElementChart component moved to components/FiveElementChart.tsx
 
   return (
@@ -212,21 +228,35 @@ export default function Home(): JSX.Element {
           <h2>過去の鑑定</h2>
           <div className="history">
             {history.map((h) => (
-              <button
+              <div
                 key={h.id}
-                className="history-item text-left"
+                className="history-item"
                 onClick={() => setSelected(h)}
+                role="button"
                 aria-haspopup="dialog"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelected(h) }}
               >
+                <button
+                  className="history-delete"
+                  onClick={(e) => { e.stopPropagation(); deleteAnalysis(h.id) }}
+                  title="削除"
+                  aria-label={`削除 ${h.name}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7v10a2 2 0 002 2h2a2 2 0 002-2V7M10 7V5a1 1 0 011-1h2a1 1 0 011 1v2" />
+                  </svg>
+                </button>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong>{h.name}</strong>
                     <div className="muted">{h.birth_date} · {h.birth_hour}時生まれ</div>
                   </div>
-                  <div className="muted">#{h.id}</div>
+                  {/* <div className="muted">#{h.id}</div> */}
                 </div>
                 <div className="summary">{h.summary}</div>
-              </button>
+              </div>
             ))}
           </div>
         </section>
