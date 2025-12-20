@@ -58,7 +58,7 @@ button.btn{@apply bg-gradient-to-r from-primary to-accent text-white px-5 py-3 r
 .history-item{padding:14px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#fbfbff);border-left:6px solid rgba(79,70,229,0.12)}
 .muted{color:#64748b;font-size:13px}
 .summary{margin-top:8px;color:#0f172a;font-weight:600}
-.chart{display:flex;gap:10px;align-items:end;height:120px;margin-top:10px}
+.chart{display:flex;gap:10px;align-items:flex-end;align-items:end;height:120px;margin-top:10px}
 .bar{width:44px;border-radius:8px}
 
 /* Validation styles */
