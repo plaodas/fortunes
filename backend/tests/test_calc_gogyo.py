@@ -21,5 +21,3 @@ def test_calc_gogyo():
 
     balance = calc_wuxing_balance(meishiki)
     assert balance == expected_balance
-
-
