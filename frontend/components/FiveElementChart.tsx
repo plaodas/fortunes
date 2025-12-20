@@ -25,7 +25,7 @@ type Props = {
   height?: number
 }
 
-export default function FiveElementChart({ analysis, height = 180 }: Props) {
+export default function FiveElementChart({ analysis, height = 200 }: Props) {
   // analysis は { wood: 3, fire: 2, earth: 1, metal: 2, water: 0 } のようなオブジェクト
   if (!analysis) return null
 
@@ -61,6 +61,7 @@ export default function FiveElementChart({ analysis, height = 180 }: Props) {
 
   return (
     <div style={{ height }}>
+      <h4 style={{ marginTop: 10 }} className="text-lg font-semibold">五行バランス</h4>
       <Bar data={data} options={options as any} />
     </div>
   )

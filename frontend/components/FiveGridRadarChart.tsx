@@ -68,9 +68,9 @@ export default function FiveGridRadarChart({ analysis, height = 200 }: Props) {
     },
     scales: {
       r: {
-        // 五格の最大値をざっくり 50 に設定（必要に応じて調整）
+        // 五格の最大値を総格の最大値80 に設定（必要に応じて調整）
         suggestedMin: 0,
-        suggestedMax: 50,
+        suggestedMax: 80,
         ticks: {
           stepSize: 10,
           showLabelBackdrop: false,
@@ -93,7 +93,8 @@ export default function FiveGridRadarChart({ analysis, height = 200 }: Props) {
 
   return (
     <div style={{ height }}>
+      <h4 style={{ marginTop: 10 }} className="text-lg font-semibold">五格バランス</h4>
       <Radar data={data} options={options} />
     </div>
   )
-};
+}
