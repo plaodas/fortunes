@@ -23,12 +23,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r dev-requirements.txt
 
-      - name: Run ruff --fix and fail if it changes files
+      - name: Run ruff format and fail if it changes files
         run: |
-          # apply automatic fixes
-          ruff --fix .
+          # apply automatic formatting
+          ruff format .
           # if ruff modified files, the working tree will have diffs; fail the job
-          git --no-pager diff --exit-code || (echo "ruff --fix modified files; run 'ruff --fix .' locally and commit the changes" && exit 1)
+          git --no-pager diff --exit-code || (echo "ruff format modified files; run 'ruff format .' locally and commit the changes" && exit 1)
 
       - name: isort check
         run: isort --check-only .
