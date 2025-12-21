@@ -129,7 +129,7 @@ def get_kanji(char: str):
     ch = char[0]
     with db.engine.connect() as conn:
         row = conn.execute(
-            text("SELECT char, codepoint, strokes_text, strokes_min, strokes_max, source FROM kanji WHERE char = :ch"),
+            text("SELECT " "char, codepoint, strokes_text, strokes_min, strokes_max, source " "FROM kanji WHERE char = :ch"),
             {"ch": ch},
         ).first()
 
