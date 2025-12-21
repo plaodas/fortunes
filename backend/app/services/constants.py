@@ -127,3 +127,31 @@ XIANGSHENG = {"木": "火", "火": "土", "土": "金", "金": "水", "水": "�
 # 相剋（弱らせる関係）
 # 木→土→水→火→金→木
 XIANGKE = {"木": "土", "土": "水", "水": "火", "火": "金", "金": "木"}
+
+
+# Map common Japanese keys to English keys for API responses
+KEY_MAP = {
+    "四柱": "four_pillars",
+    "年柱": "year",
+    "月柱": "month",
+    "日柱": "day",
+    "時柱": "hour",
+    "総合テーマ": "overall_theme",
+    "五行バランス": "gogyo_balance",
+    "日主": "day_master",
+    "相性": "compatibility",
+    "課題": "challenges",
+    "弱い五行": "weak_elements",
+    "強い五行": "strong_elements",
+    "性格傾向": "personality_tendencies",
+    "性格": "personality",
+    "人生の流れ": "life_flow",
+    "柱": "pillar",
+    "干支": "ganzhi",
+    "意味": "meaning",
+    "まとめ": "summary",
+    "十干の性質": "heavenly_stem_traits",
+    "十二支の性質": "earthly_branch_traits",
+    "助ける五行": "helping_elements",
+    "弱らせる五行": "harming_elements",
+}

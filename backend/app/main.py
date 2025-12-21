@@ -6,6 +6,8 @@ from typing import List
 from app import db, models
 from app.dtos.inputs.analyze_request import AnalyzeRequest
 from app.dtos.outputs.analysis_out import AnalysisOut
+from app.services.calc_birth_analysis import remapped_synthesize_reading
+from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -51,88 +53,17 @@ def analyze(req: AnalyzeRequest):
     meishiki: dict = get_meishiki(dt=birth_dt)
 
     # 四柱推命 ー 五行取得
-    from app.services.calc_gogyo import calc_wuxing_balance
-
     gogyo_balance: dict[str, int] = calc_wuxing_balance(meishiki)
     """gogyo_balance: {'木': 4, '火': 2, '土': 1, '金': 1, '水': 0}"""
 
     # 四柱推命 ー 総合鑑定
-    from app.services.calc_birth_analysis import synthesize_reading
-
-    birth_analysis = synthesize_reading(meishiki, gogyo_balance)
-    """
-    birth_analysis = {
-    "四柱": {
-        "年柱": {
-        "柱": "年柱",
-        "干支": "乙卯",
-        "意味": "家系・幼少期・ルーツに影響。家族の価値観や幼少期の性質を示す。",
-        "まとめ": "年柱は家系・幼少期・ルーツに影響。家族の価値観や幼少期の性質を示す。。柔らかく調和的。人間関係に強い。、社交性と調和。人間関係に恵まれる。の性質が強く表れる。",
-        "十干の性質": "柔らかく調和的。人間関係に強い。",
-        "十二支の性質": "社交性と調和。人間関係に恵まれる。"
-        },
-        "日柱": {
-        "柱": "日柱",
-        "干支": "庚辰",
-        "意味": "本人の本質・性格・結婚運を示す。人生の中心となる柱。",
-        "まとめ": "日柱は本人の本質・性格・結婚運を示す。人生の中心となる柱。。意志が強く、改革精神がある。、理想が高く、創造力がある。の性質が強く表れる。",
-        "十干の性質": "意志が強く、改革精神がある。",
-        "十二支の性質": "理想が高く、創造力がある。"
-        },
-        "時柱": {
-        "柱": "時柱",
-        "干支": "丙卯",
-        "意味": "晩年運・子供運・才能を示す。後半生のテーマが表れる。",
-        "まとめ": "時柱は晩年運・子供運・才能を示す。後半生のテーマが表れる。。明るく情熱的。表現力が豊か。、社交性と調和。人間関係に恵まれる。の性質が強く表れる。",
-        "十干の性質": "明るく情熱的。表現力が豊か。",
-        "十二支の性質": "社交性と調和。人間関係に恵まれる。"
-        },
-        "月柱": {
-        "柱": "月柱",
-        "干支": "乙寅",
-        "意味": "社会・青年期・仕事運に影響。20〜40代の運勢や社会的立場を示す。",
-        "まとめ": "月柱は社会・青年期・仕事運に影響。20〜40代の運勢や社会的立場を示す。。柔らかく調和的。人間関係に強い。、行動力と勇気。リーダーシップ。の性質が強く表れる。",
-        "十干の性質": "柔らかく調和的。人間関係に強い。",
-        "十二支の性質": "行動力と勇気。リーダーシップ。"
-        }
-    },
-    "総合テーマ": {
-        "性格": [
-        "人との縁が強く、成長意欲が高い。新しいことに挑戦する力がある。"
-        ],
-        "課題": [
-        "考えすぎたり、逆に思考が浅くなったりする。柔軟性が不足しがち。"
-        ],
-        "人生の流れ": [
-        "年柱は家系・幼少期・ルーツに影響。家族の価値観や幼少期の性質を示す。。柔らかく調和的。人間関係に強い。、社交性と調和。人間関係に恵まれる。の性質が強く表れる。",
-        "月柱は社会・青年期・仕事運に影響。20〜40代の運勢や社会的立場を示す。。柔らかく調和的。人間関係に強い。、行動力と勇気。リーダーシップ。の性質が強く表れる。",
-        "日柱は本人の本質・性格・結婚運を示す。人生の中心となる柱。。意志が強く、改革精神がある。、理想が高く、創造力がある。の性質が強く表れる。",
-        "時柱は晩年運・子供運・才能を示す。後半生のテーマが表れる。。明るく情熱的。表現力が豊か。、社交性と調和。人間関係に恵まれる。の性質が強く表れる。"
-        ]
-    },
-    "五行バランス": {
-        "日主": "金",
-        "相性": {
-        "助ける五行": "水",
-        "弱らせる五行": "木"
-        },
-        "課題": [
-        "考えすぎたり、逆に思考が浅くなったりする。柔軟性が不足しがち。"
-        ],
-        "弱い五行": [
-        "水"
-        ],
-        "強い五行": [
-        "木"
-        ],
-        "性格傾向": [
-        "人との縁が強く、成長意欲が高い。新しいことに挑戦する力がある。"
-        ]
-    }
-    }
-    """
+    birth_analysis = remapped_synthesize_reading(meishiki, gogyo_balance)
 
     # 姓名判断 ー 五格取得
+    # TODO:
+
+    # 四柱推命と姓名判断の結果から LLMに解析を依頼
+    # TODO:
 
     # Return the dummy result structure specified in the prompt
     result = {

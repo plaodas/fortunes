@@ -13,6 +13,7 @@ AIに渡す前の“構造化された鑑定データ” を作ります。
 # 0. 必要なインポート
 from app.services.constants import (
     BRANCH_TRAITS,
+    KEY_MAP,
     PILLAR_MEANING,
     STEM_TO_ELEMENT,
     STEM_TRAITS,
@@ -116,3 +117,23 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
     }
 
     return summary
+
+
+# キーの日本語ー＞英語変換ロジック
+def _remap_keys(obj):
+    """Recursively remap dict keys according to KEY_MAP."""
+    if isinstance(obj, dict):
+        new = {}
+        for k, v in obj.items():
+            new_key = KEY_MAP.get(k, k)
+            new[new_key] = _remap_keys(v)
+        return new
+    if isinstance(obj, list):
+        return [_remap_keys(x) for x in obj]
+    return obj
+
+
+# ラッパー関数：総合鑑定後にキーを英語に変換
+def remapped_synthesize_reading(meishiki: dict, balance: dict) -> dict:
+    original = synthesize_reading(meishiki, balance)
+    return _remap_keys(original)
