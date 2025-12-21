@@ -10,7 +10,8 @@ from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from app.services.calc_name_analysis import get_gogaku, get_kanji
-from app.services.constants import KAKUSUU_FORTUNE
+from app.services.make_story import render_life_analysis
+from app.services.prompts.template_life_analysis import TEMPLATE
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -64,9 +65,20 @@ def analyze(req: AnalyzeRequest):
         strokes_mei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_mei if ch.strip()]
 
     gogaku = get_gogaku(strokes_sei, strokes_mei)
+    """
+    gogaku: {"五格": {
+        '天格': {"値":10, "吉凶":"大凶", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '人格': {"値":15, "吉凶":"大吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '地格': {"値":20, "吉凶":"吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '外格': {"値":15, "吉凶":"中吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '総格': {"値":30, "吉凶":"小吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}}
+    }}
+    """
 
     # 四柱推命と姓名判断の結果から LLMに解析を依頼
     # TODO:
+    ctx: dict = birth_analysis | gogaku
+    prompt = render_life_analysis(ctx, TEMPLATE)
 
     # Return the dummy result structure specified in the prompt
     result = {
@@ -88,14 +100,14 @@ def analyze(req: AnalyzeRequest):
             "summary": None,
         },
         "name_analysis": {
-            "tenkaku": {"value": gogaku.get("天格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("天格"))},  # 天格は吉凶関係ない
-            "jinkaku": {"value": gogaku.get("人格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("人格"))},
-            "chikaku": {"value": gogaku.get("地格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("地格"))},
-            "gaikaku": {"value": gogaku.get("外格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("外格"))},
-            "soukaku": {"value": gogaku.get("総格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("総格"))},
+            "tenkaku": {"value": gogaku.get("五格").get("天格").get("値")},
+            "jinkaku": {"value": gogaku.get("五格").get("人格").get("値")},
+            "chikaku": {"value": gogaku.get("五格").get("地格").get("値")},
+            "gaikaku": {"value": gogaku.get("五格").get("外格").get("値")},
+            "soukaku": {"value": gogaku.get("五格").get("総格").get("値")},
             "summary": None,
         },
-        "summary": "",
+        "summary": prompt,
     }
 
     # Persist to DB if possible

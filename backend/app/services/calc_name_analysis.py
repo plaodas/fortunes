@@ -1,4 +1,5 @@
 from app import models
+from app.services.constants import KAKUSUU_FORTUNE, TOUGEN_FORTUNE
 from sqlalchemy.orm import Session
 
 
@@ -31,11 +32,23 @@ def get_gogaku(sei: list[tuple[str, int]], mei: list[tuple[str, int]]) -> dict[s
     """
 
     def sum_kakusuu(name_chars: list[tuple[str, int]]) -> int:
+        """Sum the stroke counts for a list of characters."""
         total = 0
         for ch in name_chars:
             _, strokes = ch
             total += strokes
         return total
+
+    def get_gogaku_dict(value: int) -> dict:
+        """Get the fortune dictionary for a given stroke count value."""
+        return {
+            "値": value,
+            "吉凶": KAKUSUU_FORTUNE.get(value),
+            "桃源": {
+                "短文": TOUGEN_FORTUNE.get(KAKUSUU_FORTUNE.get(value)).get("短文") if KAKUSUU_FORTUNE.get(value) else "",
+                "長文": TOUGEN_FORTUNE.get(KAKUSUU_FORTUNE.get(value)).get("長文") if KAKUSUU_FORTUNE.get(value) else "",
+            },
+        }
 
     # Build a dictionary of character to stroke count
     kakusuu_dict = {}
@@ -56,7 +69,7 @@ def get_gogaku(sei: list[tuple[str, int]], mei: list[tuple[str, int]]) -> dict[s
     soukaku = sei_kakusu + mei_kakusu  # 姓名すべての画数合計
     gaikaku = soukaku - jinkaku  # 総格 − 人格
 
-    return {"天格": tenkaku, "人格": jinkaku, "地格": chikaku, "外格": gaikaku, "総格": soukaku}
+    return {"五格": {"天格": get_gogaku_dict(tenkaku), "人格": get_gogaku_dict(jinkaku), "地格": get_gogaku_dict(chikaku), "外格": get_gogaku_dict(gaikaku), "総格": get_gogaku_dict(soukaku)}}
 
 
 """
