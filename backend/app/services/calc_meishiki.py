@@ -138,7 +138,7 @@ def _get_hour_pillar(dt: datetime, day_pillar: str) -> str:
 
 # 6. 命式をまとめて計算する関数
 # ここまでを1つにまとめます。
-def get_meishiki(dt: datetime) -> dict:
+def get_meishiki(dt: datetime) -> dict[str, str]:
     """
     与えられた日時から
     ・年柱

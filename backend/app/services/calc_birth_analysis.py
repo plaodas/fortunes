@@ -13,6 +13,7 @@ AIに渡す前の“構造化された鑑定データ” を作ります。
 # 0. 必要なインポート
 from app.services.constants import (
     BRANCH_TRAITS,
+    KEY_MAP,
     PILLAR_MEANING,
     STEM_TO_ELEMENT,
     STEM_TRAITS,
@@ -34,13 +35,10 @@ def interpret_pillar(pillar_name: str, kanshi: str):
     return {
         "柱": pillar_name,
         "干支": kanshi,
-        "領域": pillar_meaning,
+        "意味": pillar_meaning,
         "十干の性質": stem_trait,
         "十二支の性質": branch_trait,
-        "まとめ": (
-            f"{pillar_name}は{pillar_meaning}。"
-            f"{stem_trait}、{branch_trait}の性質が強く表れる。"
-        ),
+        "まとめ": (f"{pillar_name}は{pillar_meaning}{stem_trait}{branch_trait}の性質が強く表れる。"),
     }
 
 
@@ -92,9 +90,7 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
     day_stem = meishiki["日柱"][0]
 
     # 四柱の解釈
-    pillar_interpretations = {
-        name: interpret_pillar(name, kanshi) for name, kanshi in meishiki.items()
-    }
+    pillar_interpretations = {name: interpret_pillar(name, kanshi) for name, kanshi in meishiki.items()}
 
     # 五行バランスの解釈
     wuxing_interpretation = interpret_wuxing(balance, day_stem)
@@ -118,10 +114,21 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
     return summary
 
 
-# 6. この構造化データをAIに渡すと…
-# あなたが最初に示したような
-# - 命式の特徴
-# - 五行バランス
-# - 総合的な傾向
-# - 桃源紀行風の鑑定文
-# を 安いモデルでも高品質に生成できます。
+# キーの日本語ー＞英語変換ロジック
+def _remap_keys(obj):
+    """Recursively remap dict keys according to KEY_MAP."""
+    if isinstance(obj, dict):
+        new = {}
+        for k, v in obj.items():
+            new_key = KEY_MAP.get(k, k)
+            new[new_key] = _remap_keys(v)
+        return new
+    if isinstance(obj, list):
+        return [_remap_keys(x) for x in obj]
+    return obj
+
+
+# ラッパー関数：総合鑑定後にキーを英語に変換
+def remapped_synthesize_reading(meishiki: dict, balance: dict) -> dict:
+    original = synthesize_reading(meishiki, balance)
+    return _remap_keys(original)

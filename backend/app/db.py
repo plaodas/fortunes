@@ -14,9 +14,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", default)
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 
-engine = create_engine(
-    DATABASE_URL, future=True, pool_pre_ping=True, echo=(os.getenv("DEBUG") == "1")
-)
+engine = create_engine(DATABASE_URL, future=True, pool_pre_ping=True, echo=(os.getenv("DEBUG") == "1"))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 Base = declarative_base()
 

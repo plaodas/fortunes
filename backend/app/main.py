@@ -1,17 +1,17 @@
 import json
 import logging
-import os
-import time
 from datetime import datetime
 from typing import List
 
 from app import db, models
 from app.dtos.inputs.analyze_request import AnalyzeRequest
 from app.dtos.outputs.analysis_out import AnalysisOut
+from app.services.calc_birth_analysis import synthesize_reading
+from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 # Use a module-level Depends wrapper to satisfy ruff B008
@@ -28,48 +28,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def apply_migrations():
-    """Apply SQL migrations found in backend/migrations/init.sql if DB is reachable.
-
-    This is idempotent and will be skipped if the DB is not available (useful for
-    local dev where a DB may not be present).
-    """
-    migrations_file = os.path.join(
-        os.path.dirname(__file__), "..", "migrations", "init.sql"
-    )
-    if not os.path.exists(migrations_file):
-        logger.info("No migrations file found at %s", migrations_file)
-        return
-
-    with open(migrations_file, "r", encoding="utf-8") as f:
-        sql = f.read()
-
-    # Retry loop: wait for DB to become available before applying migrations
-    max_attempts = int(os.getenv("MIGRATE_MAX_ATTEMPTS", "15"))
-    delay_seconds = float(os.getenv("MIGRATE_DELAY_SECONDS", "2"))
-    attempt = 0
-    while attempt < max_attempts:
-        attempt += 1
-        try:
-            with db.engine.begin() as conn:
-                conn.exec_driver_sql(sql)
-            logger.info("Applied migrations from %s", migrations_file)
-            return
-        except OperationalError as oe:
-            logger.warning(
-                "DB not ready (attempt %d/%d): %s", attempt, max_attempts, oe
-            )
-            time.sleep(delay_seconds)
-        except Exception as e:
-            logger.error("Failed to apply migrations: %s", e)
-            return
-
-    logger.error(
-        "Exceeded max attempts (%d) applying migrations; giving up.", max_attempts
-    )
 
 
 @app.get("/health")
@@ -90,52 +48,44 @@ def analyze(req: AnalyzeRequest):
     birth_hour: int = int(req.birth_hour)
 
     # 四柱推命 ー 命式の取得
-    birth_dt: datetime = datetime.combine(birth_date, datetime.min.time()).replace(
-        hour=birth_hour
-    )
+    birth_dt: datetime = datetime.combine(birth_date, datetime.min.time()).replace(hour=birth_hour)
     meishiki: dict = get_meishiki(dt=birth_dt)
 
     # 四柱推命 ー 五行取得
-    from app.services.calc_gogyo import calc_wuxing_balance
-
     gogyo_balance: dict[str, int] = calc_wuxing_balance(meishiki)
     """gogyo_balance: {'木': 4, '火': 2, '土': 1, '金': 1, '水': 0}"""
 
     # 四柱推命 ー 総合鑑定
-    from app.services.calc_birth_analysis import synthesize_reading
-
     birth_analysis = synthesize_reading(meishiki, gogyo_balance)
 
-    logger.debug("Birth analysis result: %s", birth_analysis)
-
     # 姓名判断 ー 五格取得
+    # TODO:
+
+    # 四柱推命と姓名判断の結果から LLMに解析を依頼
+    # TODO:
 
     # Return the dummy result structure specified in the prompt
     result = {
         "birth_analysis": {
             "meishiki": {
-                "year": meishiki["年柱"],
-                "month": meishiki["月柱"],
-                "day": meishiki["日柱"],
-                "hour": meishiki["時柱"],
-                "summary": birth_analysis,
+                "year": meishiki.get("年柱"),
+                "month": meishiki.get("月柱"),
+                "day": meishiki.get("日柱"),
+                "hour": meishiki.get("時柱"),
+                "summary": birth_analysis.get("四柱").get("日柱").get("まとめ"),
             },
             "gogyo": {
-                "wood": 26,
-                "fire": 15,
-                "earth": 11,
-                "metal": 22,
-                "water": 37,
-                "summary": (
-                    "「木（金を切る）と火（金を溶かす）が多いため、日主の辛（金）は"
-                    "試練を受けやすいが、努力で輝きを増すタイプ。人間関係や環境から刺激を受けて成長する人生。"
-                ),
+                "wood": gogyo_balance.get("木", 0),
+                "fire": gogyo_balance.get("火", 0),
+                "earth": gogyo_balance.get("土", 0),
+                "metal": gogyo_balance.get("金", 0),
+                "water": gogyo_balance.get("水", 0),
             },
-            "summary": (
-                "美意識やこだわりを持ち、周囲から「個性的」「センスがある」と見られやすい。"
-                "人との縁が強く、交流や人脈が人生のテーマ。試練を通じて磨かれる運勢で、困難を乗り越えるほど輝きが増す。"
-                "晩年は人間関係に恵まれ、後進を育てる立場に向く。柔軟性・流れ」を意識するとさらに良い"
-            ),
+            "summary": {
+                "personality": birth_analysis.get("総合テーマ").get("性格"),
+                "challenges": birth_analysis.get("総合テーマ").get("性格"),
+                "life_flow": birth_analysis.get("総合テーマ").get("人生の流れ"),
+            },
         },
         "name_analysis": {
             "tenkaku": 26,
@@ -145,10 +95,7 @@ def analyze(req: AnalyzeRequest):
             "soukaku": 37,
             "summary": "努力家で晩年安定",
         },
-        "summary": (
-            "全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。"
-            "名前の五格も努力家で晩年安定しています。"
-        ),
+        "summary": ("全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。"),
     }
 
     # Persist to DB if possible
@@ -170,16 +117,35 @@ def analyze(req: AnalyzeRequest):
     return {"input": req.dict(), "result": result}
 
 
+@app.get("/kanji/{char}")
+def get_kanji(char: str):
+    """Return kanji stroke info for a single character.
+
+    Example: GET /kanji/漢
+    """
+    if not char:
+        return {"error": "provide a single character"}
+    # only first character
+    ch = char[0]
+    with db.engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT char, codepoint, strokes_text, strokes_min, strokes_max, source FROM kanji WHERE char = :ch"),
+            {"ch": ch},
+        ).first()
+
+    if not row:
+        return {"found": False}
+
+    # row is a Row; convert to dict
+    data = dict(row._mapping)
+    return {"found": True, "kanji": data}
+
+
 @app.get("/analyses", response_model=List[AnalysisOut])
 def list_analyses(limit: int = 50, db: Session = get_db_dependency):
     """Return recent analyses ordered by newest first."""
     with db as session:
-        qs = (
-            session.query(models.Analysis)
-            .order_by(models.Analysis.id.desc())
-            .limit(limit)
-            .all()
-        )
+        qs = session.query(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit).all()
     out = []
     for a in qs:
         out.append(
@@ -188,16 +154,8 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
                 name=a.name,
                 birth_date=a.birth_date.isoformat(),
                 birth_hour=a.birth_hour,
-                result_name=(
-                    json.loads(a.result_name)
-                    if isinstance(a.result_name, str)
-                    else a.result_name
-                ),
-                result_birth=(
-                    json.loads(a.result_birth)
-                    if isinstance(a.result_birth, str)
-                    else a.result_birth
-                ),
+                result_name=(json.loads(a.result_name) if isinstance(a.result_name, str) else a.result_name),
+                result_birth=(json.loads(a.result_birth) if isinstance(a.result_birth, str) else a.result_birth),
                 summary=a.summary,
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
@@ -209,11 +167,7 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
 def delete_analysis(analysis_id: int, db: Session = get_db_dependency):
     """Delete an analysis by ID."""
     with db as session:
-        obj = (
-            session.query(models.Analysis)
-            .filter(models.Analysis.id == analysis_id)
-            .first()
-        )
+        obj = session.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
         if not obj:
             return {"status": "not found"}
         session.delete(obj)
