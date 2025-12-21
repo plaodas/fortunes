@@ -13,14 +13,10 @@ from sqlalchemy import Connection
 
 
 def _run_migration(conn: Connection, file_name: str):
-    migrations_file = os.path.join(
-        os.path.dirname(__file__), "backend", "migrations", file_name
-    )
+    migrations_file = os.path.join(os.path.dirname(__file__), "backend", "migrations", file_name)
     # support running both from repo root and from backend folder
     if not os.path.exists(migrations_file):
-        migrations_file = os.path.join(
-            os.path.dirname(__file__), "migrations", file_name
-        )
+        migrations_file = os.path.join(os.path.dirname(__file__), "migrations", file_name)
 
     if not os.path.exists(migrations_file):
         print("No migrations file found at expected location.")

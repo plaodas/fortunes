@@ -38,10 +38,7 @@ def interpret_pillar(pillar_name: str, kanshi: str):
         "意味": pillar_meaning,
         "十干の性質": stem_trait,
         "十二支の性質": branch_trait,
-        "まとめ": (
-            f"{pillar_name}は{pillar_meaning}"
-            f"{stem_trait}{branch_trait}の性質が強く表れる。"
-        ),
+        "まとめ": (f"{pillar_name}は{pillar_meaning}" f"{stem_trait}{branch_trait}の性質が強く表れる。"),
     }
 
 
@@ -93,9 +90,7 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
     day_stem = meishiki["日柱"][0]
 
     # 四柱の解釈
-    pillar_interpretations = {
-        name: interpret_pillar(name, kanshi) for name, kanshi in meishiki.items()
-    }
+    pillar_interpretations = {name: interpret_pillar(name, kanshi) for name, kanshi in meishiki.items()}
 
     # 五行バランスの解釈
     wuxing_interpretation = interpret_wuxing(balance, day_stem)
