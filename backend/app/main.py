@@ -7,13 +7,16 @@ import time
 from typing import List
 from sqlalchemy.orm import Session
 
-from .entities.birth_analytics import Meishiki
-from .services.calc_meishiki import get_meishiki
+from app.dtos.inputs.analyze_request import AnalyzeRequest
+from app.dtos.outputs.analysis_out import AnalysisOut
+
+from app.services.calc_meishiki import get_meishiki
 from . import db, models
 from datetime import date, datetime
 import json
 import os
 import logging
+
 
 logger = logging.getLogger("uvicorn")
 
@@ -27,21 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-class AnalyzeRequest(BaseModel):
-    name: str
-    birth_date: str  # YYYY-MM-DD
-    birth_hour: int  # 0-23
-
-
-class AnalysisOut(BaseModel):
-    id: int
-    name: str
-    birth_date: str
-    birth_hour: int
-    result_birth: dict
-    result_name: dict
-    created_at: str | None = None
 
 
 @app.on_event("startup")
@@ -95,30 +83,35 @@ def analyze(req: AnalyzeRequest):
     # ここで命式と五行・五格の解析を行う。
     # 解析ロジックは省略し、ダミーの結果を返す
 
-    birth_date = datetime.fromisoformat(req.birth_date).date()
-    birth_hour = int(req.birth_hour)
+    birth_date: datetime.date = datetime.fromisoformat(req.birth_date).date()
+    birth_hour: int = int(req.birth_hour)
 
-    # 命式の取得
-    birth_dt = datetime.combine(birth_date, datetime.min.time()).replace(hour=birth_hour)
-    meishiki: Meishiki = get_meishiki(dt=birth_dt)
+    # 四柱推命 ー 命式の取得
+    birth_dt: datetime = datetime.combine(birth_date, datetime.min.time()).replace(hour=birth_hour)
+    meishiki: dict = get_meishiki(dt=birth_dt)
 
-    # 五行取得
+    # 四柱推命 ー 五行取得
+    from app.services.calc_gogyo import calc_wuxing_balance
+    gogyo_balance: dict[str, int] = calc_wuxing_balance(meishiki)
+    """gogyo_balance: {'木': 4, '火': 2, '土': 1, '金': 1, '水': 0}"""
+
+    # 四柱推命 ー 総合鑑定
+    from app.services.calc_birth_analysis import synthesize_reading
+    birth_analysis = synthesize_reading(meishiki, gogyo_balance)
 
 
-
-
-    # 五格取得
+    # 姓名判断 ー 五格取得
 
 
 
     # Return the dummy result structure specified in the prompt
     result = {
         "birth_analysis": {
-            "meisiki": {
-                "year": meishiki.year,
-                "month": meishiki.month,
-                "day": meishiki.day,
-                "hour": meishiki.hour,
+            "meishiki": {
+                "year": meishiki["年柱"],
+                "month": meishiki["月柱"],
+                "day": meishiki["日柱"],
+                "hour": meishiki["時柱"],
                 "summary": "辛（金）は「宝石のような金属」で、繊細で美意識が高く、こだわりを持つタイプ。巳（火）は金を鍛える火で、試練や努力を通じて磨かれる運勢を示します",
             },
             "gogyo":{

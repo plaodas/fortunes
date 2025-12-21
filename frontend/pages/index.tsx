@@ -20,7 +20,7 @@ type Gogyo = {
 }
 
 type BirthAnalysis = {
-  meisiki: Meishiki
+  meishiki: Meishiki
   gogyo: Gogyo
   summary?: string
 }
@@ -268,7 +268,7 @@ export default function Home(): JSX.Element {
           <div className="muted">{selected.birth_date} · {selected.birth_hour}時生まれ</div>
         </>} onClose={() => setSelected(null)}>
           <div className="meishiki-cards">
-            <MeishikiCards analysis={selected.result_birth?.meisiki} />
+            <MeishikiCards analysis={selected.result_birth?.meishiki} />
           </div>
           <div className="chart">
             <FiveElementChart analysis={selected.result_birth?.gogyo} />

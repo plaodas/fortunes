@@ -1,4 +1,8 @@
-from app.services.calc_gogyo_balance import interpret_wuxing
+"""
+deprecated: birth_analysis.pyに移管したので不使用
+"""
+
+from app.services.calc_gogyo_interpretation import interpret_wuxing
 
 def test_calc_gogyo_balance():
 
