@@ -48,9 +48,7 @@ def analyze(req: AnalyzeRequest):
     birth_hour: int = int(req.birth_hour)
 
     # 四柱推命 ー 命式の取得
-    birth_dt: datetime = datetime.combine(birth_date, datetime.min.time()).replace(
-        hour=birth_hour
-    )
+    birth_dt: datetime = datetime.combine(birth_date, datetime.min.time()).replace(hour=birth_hour)
     meishiki: dict = get_meishiki(dt=birth_dt)
 
     # 四柱推命 ー 五行取得
@@ -97,10 +95,7 @@ def analyze(req: AnalyzeRequest):
             "soukaku": 37,
             "summary": "努力家で晩年安定",
         },
-        "summary": (
-            "全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。"
-            "名前の五格も努力家で晩年安定しています。"
-        ),
+        "summary": ("全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。"),
     }
 
     # Persist to DB if possible
@@ -134,9 +129,7 @@ def get_kanji(char: str):
     ch = char[0]
     with db.engine.connect() as conn:
         row = conn.execute(
-            text(
-                "SELECT char, codepoint, strokes_text, strokes_min, strokes_max, source FROM kanji WHERE char = :ch"
-            ),
+            text("SELECT char, codepoint, strokes_text, strokes_min, strokes_max, source FROM kanji WHERE char = :ch"),
             {"ch": ch},
         ).first()
 
@@ -152,12 +145,7 @@ def get_kanji(char: str):
 def list_analyses(limit: int = 50, db: Session = get_db_dependency):
     """Return recent analyses ordered by newest first."""
     with db as session:
-        qs = (
-            session.query(models.Analysis)
-            .order_by(models.Analysis.id.desc())
-            .limit(limit)
-            .all()
-        )
+        qs = session.query(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit).all()
     out = []
     for a in qs:
         out.append(
@@ -166,16 +154,8 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
                 name=a.name,
                 birth_date=a.birth_date.isoformat(),
                 birth_hour=a.birth_hour,
-                result_name=(
-                    json.loads(a.result_name)
-                    if isinstance(a.result_name, str)
-                    else a.result_name
-                ),
-                result_birth=(
-                    json.loads(a.result_birth)
-                    if isinstance(a.result_birth, str)
-                    else a.result_birth
-                ),
+                result_name=(json.loads(a.result_name) if isinstance(a.result_name, str) else a.result_name),
+                result_birth=(json.loads(a.result_birth) if isinstance(a.result_birth, str) else a.result_birth),
                 summary=a.summary,
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
@@ -187,11 +167,7 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
 def delete_analysis(analysis_id: int, db: Session = get_db_dependency):
     """Delete an analysis by ID."""
     with db as session:
-        obj = (
-            session.query(models.Analysis)
-            .filter(models.Analysis.id == analysis_id)
-            .first()
-        )
+        obj = session.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
         if not obj:
             return {"status": "not found"}
         session.delete(obj)
