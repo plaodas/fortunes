@@ -1,18 +1,49 @@
 name: Backend Tests
 
-# Run backend tests only after the `Lint` workflow completes successfully
 on:
-  workflow_run:
-    workflows: ["Lint"]
-    types: [completed]
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  backend-tests:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    name: Run backend tests
+  lint:
+    name: Run Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install pinned tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dev-requirements.txt
+
+      - name: Run ruff format and fail if it changes files
+        run: |
+          # apply automatic formatting
+          ruff format .
+          # if ruff modified files, the working tree will have diffs; fail the job
+          git --no-pager diff --exit-code || (echo "ruff format modified files; run 'ruff format .' locally and commit the changes" && exit 1)
+
+      - name: isort check
+        run: isort --check-only .
+
+      - name: black check
+        run: black --check .
+
+  backend-tests:
+    name: Run backend tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
