@@ -35,7 +35,7 @@ def interpret_pillar(pillar_name: str, kanshi: str):
     return {
         "柱": pillar_name,
         "干支": kanshi,
-        "意味": pillar_meaning,
+        "領域": pillar_meaning,
         "十干の性質": stem_trait,
         "十二支の性質": branch_trait,
         "まとめ": (f"{pillar_name}は{pillar_meaning}{stem_trait}{branch_trait}の性質が強く表れる。"),
