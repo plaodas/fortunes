@@ -72,7 +72,7 @@ export default function FiveGridRadarChart({ analysis, height = 200 }: Props) {
         suggestedMin: 0,
         suggestedMax: 80,
         ticks: {
-          stepSize: 10,
+          stepSize: 20,
           showLabelBackdrop: false,
         },
         pointLabels: {

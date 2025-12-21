@@ -1,14 +1,26 @@
-from datetime import date, datetime
-from ..entities.birth_analytics import Meishiki
+"""
+四柱推命の命式（年柱・月柱・日柱・時柱）を計算するロジック
 
-# 十干と十二支
-TENKAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
-JUNISHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+ここでは「実装しやすいけど、それなりに四柱推命っぽくなる“簡易版”」を出します。
+- 西暦年月日＋24時制の時刻 →
+年柱・月柱・日柱・時柱（十干十二支）
+※本格的にやるなら「節入り（立春など）の厳密計算」が必要ですが、ここでは
+- 立春を毎年 2/4 固定
+- 月干は「年干＋月番号」ルール
+という、実装しやすい近似を使っています。
+"""
+
+from datetime import date, datetime
+
+# 1. 基本データの準備
+from .constants import HOUR_STEM_TABLE, JUNISHI, TENKAN
 
 # 甲子を基準にした60干支
-KANSHI = [TENKAN[i % 10] + JUNISHI[i % 12] for i in range(60)]
+_KANSHI = [TENKAN[i % 10] + JUNISHI[i % 12] for i in range(60)]
 
-def get_year_pillar(dt: datetime):
+
+# 2. 年柱の計算（簡易版：立春を2/4固定）
+def _get_year_pillar(dt: datetime) -> str:
     """
     年柱を求める簡易ロジック
     ・立春を毎年 2月4日 固定とする
@@ -23,9 +35,15 @@ def get_year_pillar(dt: datetime):
     # 1984年 = 甲子
     offset = y - 1984
     idx = offset % 60
-    return KANSHI[idx]
+    return _KANSHI[idx]
 
-def get_month_index(dt: datetime):
+
+# 3. 月柱の計算（簡易：節入り無視で“月番号”を使う）
+# 四柱推命の月柱は本来「節入り」で変わりますが、
+# ここではざっくり「2月＝寅月」として扱う簡易版です。
+# - 寅月を1番、卯月を2番、…、丑月を12番として
+# 月干＝年干の番号＋月番号−1
+def _get_month_index(dt: datetime) -> int:
     """
     寅月を1とした月番号の簡易版。
     本来は節入りで月が変わるが、ここではざっくりグレゴリオ暦の月で近似。
@@ -36,14 +54,15 @@ def get_month_index(dt: datetime):
     idx = (m - 2) % 12 + 1
     return idx
 
-def get_month_pillar(dt: datetime, year_pillar: str):
+
+def _get_month_pillar(dt: datetime, year_pillar: str):
     """
     月柱を求める簡易ロジック
     ・寅月 = 1 として月番号を計算
     ・月支：寅から順に
     ・月干：年干の位置＋月番号−1
     """
-    month_index = get_month_index(dt)  # 1〜12
+    month_index = _get_month_index(dt)  # 1〜12
 
     # 月支：寅(寅=2番目)からスタート
     month_branch = JUNISHI[(2 + month_index - 1) % 12]  # 寅を起点
@@ -59,7 +78,13 @@ def get_month_pillar(dt: datetime, year_pillar: str):
 
     return month_stem + month_branch
 
-def get_day_pillar(dt: datetime):
+
+# 4. 日柱の計算（基準日からの経過日で干支を求める）
+# 日干支は「ある基準日が何の干支か」を決めて、そこからの経過日で算出できます。
+# ここではよく使われる
+# - 1984-02-02 を 甲子日
+# として扱います。
+def _get_day_pillar(dt: datetime) -> str:
     """
     日柱（その日の干支）を求める。
     ・1984-02-02 を 甲子日 として基準にする。
@@ -67,9 +92,15 @@ def get_day_pillar(dt: datetime):
     base = date(1984, 2, 2)  # 甲子日（近似）
     delta = dt.date() - base
     idx = delta.days % 60
-    return KANSHI[idx]
+    return _KANSHI[idx]
 
-def get_hour_branch(hour: int):
+
+# 5. 時柱の計算（時刻＋日干から求める）
+# 四柱推命の時柱は
+# - 時刻 → 地支（2時間ごと）
+# - 日干＋時支 → 時干
+# というルールです。
+def _get_hour_branch(hour: int) -> str:
     """
     時刻（0〜23）から時支を求める。
     子：23〜1時、丑：1〜3時... だが、
@@ -87,29 +118,15 @@ def get_hour_branch(hour: int):
         idx = ((hour + 1) // 2) % 12
     return JUNISHI[idx]
 
-# 日干×時支 → 時干のテーブル（簡略版、よく使われる対応）
-# 実務書に載っている「日干別の時干一覧」を元に自作してもOK
-HOUR_STEM_TABLE = {
-    "甲": ["甲","丙","戊","庚","壬","甲","丙","戊","庚","壬","甲","丙"],
-    "乙": ["乙","丁","己","辛","癸","乙","丁","己","辛","癸","乙","丁"],
-    "丙": ["丙","戊","庚","壬","甲","丙","戊","庚","壬","甲","丙","戊"],
-    "丁": ["丁","己","辛","癸","乙","丁","己","辛","癸","乙","丁","己"],
-    "戊": ["戊","庚","壬","甲","丙","戊","庚","壬","甲","丙","戊","庚"],
-    "己": ["己","辛","癸","乙","丁","己","辛","癸","乙","丁","己","辛"],
-    "庚": ["庚","壬","甲","丙","戊","庚","壬","甲","丙","戊","庚","壬"],
-    "辛": ["辛","癸","乙","丁","己","辛","癸","乙","丁","己","辛","癸"],
-    "壬": ["壬","甲","丙","戊","庚","壬","甲","丙","戊","庚","壬","甲"],
-    "癸": ["癸","乙","丁","己","辛","癸","乙","丁","己","辛","癸","乙"],
-}
 
-def get_hour_pillar(dt: datetime, day_pillar: str):
+def _get_hour_pillar(dt: datetime, day_pillar: str) -> str:
     """
     時柱を求める
     ・時支：時刻から算出
     ・時干：日干＋時支の位置からテーブルで取得
     """
     h = dt.hour
-    branch = get_hour_branch(h)
+    branch = _get_hour_branch(h)
     day_stem = day_pillar[0]
 
     # 子〜亥を 0〜11 に対応
@@ -118,7 +135,10 @@ def get_hour_pillar(dt: datetime, day_pillar: str):
 
     return stem + branch
 
-def get_meishiki(dt: datetime):
+
+# 6. 命式をまとめて計算する関数
+# ここまでを1つにまとめます。
+def get_meishiki(dt: datetime) -> dict:
     """
     与えられた日時から
     ・年柱
@@ -127,15 +147,14 @@ def get_meishiki(dt: datetime):
     ・時柱
     を簡易計算する。
     """
-    year_p = get_year_pillar(dt)
-    month_p = get_month_pillar(dt, year_p)
-    day_p = get_day_pillar(dt)
-    hour_p = get_hour_pillar(dt, day_p)
+    year_p = _get_year_pillar(dt)
+    month_p = _get_month_pillar(dt, year_p)
+    day_p = _get_day_pillar(dt)
+    hour_p = _get_hour_pillar(dt, day_p)
 
-    return Meishiki(
-        year=year_p,
-        month=month_p,
-        day=day_p,
-        hour=hour_p,
-    )
-
+    return {
+        "年柱": year_p,
+        "月柱": month_p,
+        "日柱": day_p,
+        "時柱": hour_p,
+    }

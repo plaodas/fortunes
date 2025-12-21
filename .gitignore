@@ -100,3 +100,4 @@ credentials.json
 token.json
 reports/
 queries/
+.ruff_cache/

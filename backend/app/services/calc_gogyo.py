@@ -1,43 +1,29 @@
-# 十干 → 五行マッピング
-STEM_TO_ELEMENT = {
-    "甲": "木", "乙": "木",
-    "丙": "火", "丁": "火",
-    "戊": "土", "己": "土",
-    "庚": "金", "辛": "金",
-    "壬": "水", "癸": "水"
-}
+"""
+五行算出ロジック
 
-# 十二支 → 五行（蔵干ベース）マッピング
-# 十二支は単独の五行ではなく、**蔵干（内部に含む干）**を使うのが一般的です。
-# 簡易版として「主蔵干のみ」を採用します。
-BRANCH_TO_MAIN_STEM = {
-    "子": "癸",  # 水
-    "丑": "己",  # 土
-    "寅": "甲",  # 木
-    "卯": "乙",  # 木
-    "辰": "戊",  # 土
-    "巳": "丙",  # 火
-    "午": "丁",  # 火
-    "未": "己",  # 土
-    "申": "庚",  # 金
-    "酉": "辛",  # 金
-    "戌": "戊",  # 土
-    "亥": "壬"   # 水
-}
+こでは、命式（年柱・月柱・日柱・時柱）から五行バランスを計算するロジックを、Pythonでそのまま使える形にまとめます。
+四柱推命では
+- 十干 → 五行
+- 十二支 → 五行（蔵干を含む）
+を数えて、最終的に 木・火・土・金・水の強弱 を出します。
+"""
+
+from .constants import BRANCH_TO_MAIN_STEM, STEM_TO_ELEMENT
+
 
 # 五行カウンターの初期化
-def init_wuxing():
+def _init_wuxing() -> dict[str, int]:
     return {"木": 0, "火": 0, "土": 0, "金": 0, "水": 0}
 
 
 # 干支 → 五行を加算する関数
-def add_pillar_to_wuxing(pillar: str, wuxing: dict):
+def _add_pillar_to_wuxing(pillar: str, wuxing: dict[str, int]) -> dict[str, int]:
     """
     pillar: '甲子' のような2文字
     wuxing: 五行カウンター
     """
-    stem = pillar[0]   # 十干
-    branch = pillar[1] # 十二支
+    stem = pillar[0]  # 十干
+    branch = pillar[1]  # 十二支
 
     # 十干の五行
     stem_ele = STEM_TO_ELEMENT.get(stem)
@@ -51,29 +37,24 @@ def add_pillar_to_wuxing(pillar: str, wuxing: dict):
         if branch_ele:
             wuxing[branch_ele] += 1
 
+    return wuxing
 
 
 # 命式（年柱・月柱・日柱・時柱）から五行バランスを計算
-def calc_wuxing_balance(meishiki: dict):
+def calc_wuxing_balance(meishiki: dict[str, str]) -> dict[str, int]:
     """
-    meishiki = {
-        "年柱": "乙卯",
-        "月柱": "戊寅",
-        "日柱": "辛巳",
-        "時柱": "乙卯"
-    }
+    arg meishiki: {'年柱':'乙卯', '月柱':'戊寅', '日柱':'辛巳', '時柱':'乙卯'}
+    return: {'木':4, '火':2, '土':1, '金':1, '水':0}
     """
-    wuxing = init_wuxing()
+    wuxing = _init_wuxing()
 
     for pillar in meishiki.values():
-        add_pillar_to_wuxing(pillar, wuxing)
+        wuxing = _add_pillar_to_wuxing(pillar, wuxing)
 
     return wuxing
 
 
-
 # あなたが示した文章の五行バランスとほぼ一致します。
-
 
 
 # これでできること
@@ -91,4 +72,3 @@ def calc_wuxing_balance(meishiki: dict):
 # - AIに渡すプロンプトテンプレート
 # - 桃源紀行風の文章生成テンプレート
 # どれを作りましょうか。
-

@@ -1,7 +1,7 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Default to PostgreSQL for this project. If an env var is provided it will be
 # used; also normalize legacy `postgres://` scheme to the SQLAlchemy
@@ -14,9 +14,12 @@ DATABASE_URL = os.getenv("DATABASE_URL", default)
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 
-engine = create_engine(DATABASE_URL, future=True, pool_pre_ping=True, echo=(os.getenv("DEBUG") == "1"))
+engine = create_engine(
+    DATABASE_URL, future=True, pool_pre_ping=True, echo=(os.getenv("DEBUG") == "1")
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
