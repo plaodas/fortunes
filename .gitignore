@@ -101,3 +101,5 @@ token.json
 reports/
 queries/
 .ruff_cache/
+vendor/
+
