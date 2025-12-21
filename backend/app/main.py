@@ -40,10 +40,7 @@ def analyze(req: AnalyzeRequest):
     """Perform fortune analysis based on name and birth date/hour.
     Returns a dummy result for now.
     """
-    # TODO:
-    # ここで命式と五行・五格の解析を行う。
-    # 解析ロジックは省略し、ダミーの結果を返す
-
+    # 命式と五行・五格の解析
     birth_date: datetime.date = datetime.fromisoformat(req.birth_date).date()
     birth_hour: int = int(req.birth_hour)
 
@@ -83,7 +80,7 @@ def analyze(req: AnalyzeRequest):
             },
             "summary": {
                 "personality": birth_analysis.get("総合テーマ").get("性格"),
-                "challenges": birth_analysis.get("総合テーマ").get("性格"),
+                "challenges": birth_analysis.get("総合テーマ").get("課題"),
                 "life_flow": birth_analysis.get("総合テーマ").get("人生の流れ"),
             },
         },
