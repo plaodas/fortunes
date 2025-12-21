@@ -18,10 +18,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install tools
+      - name: Install pinned tools
         run: |
           python -m pip install --upgrade pip
-          pip install ruff isort black
+          pip install -r dev-requirements.txt
 
       - name: Run ruff --fix and fail if it changes files
         run: |
