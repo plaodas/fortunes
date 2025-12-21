@@ -52,28 +52,34 @@ type AnalysisOut = {
 }
 
 export default function Home(): JSX.Element {
-  const [name, setName] = useState<string>('')
+  const [name_sei, setNameSei] = useState<string>('')
+  const [name_mei, setNameMei] = useState<string>('')
   const [date, setDate] = useState<string>('1990-01-01')
   const [hour, setHour] = useState<number>(12)
-  const [nameError, setNameError] = useState<string | null>(null)
+  const [nameSeiError, setNameSeiError] = useState<string | null>(null)
+  const [nameMeiError, setNameMeiError] = useState<string | null>(null)
   const [dateError, setDateError] = useState<string | null>(null)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [history, setHistory] = useState<AnalysisOut[]>([])
   const [selected, setSelected] = useState<AnalysisOut | null>(null)
 
-  const isFormValid = !nameError && !dateError && name.trim().length > 0
+  const isFormValid = !nameSeiError && !nameMeiError && !dateError && name_sei.trim().length > 0 && name_mei.trim().length > 0
 
   useEffect(() => {
     fetchHistory()
   }, [])
   function runValidation() {
     // name: at least 2 characters
-    if (name.trim().length === 0) {
-      setNameError('名前を入力してください')
-    } else if (name.trim().length < 2) {
-      setNameError('名前は2文字以上で入力してください')
+    if (name_sei.trim().length === 0) {
+      setNameSeiError('姓を入力してください')
     } else {
-      setNameError(null)
+      setNameSeiError(null)
+    }
+
+    if (name_mei.trim().length === 0) {
+      setNameMeiError('名を入力してください')
+    } else {
+      setNameMeiError(null)
     }
 
     // date: valid format and not in the future
@@ -90,17 +96,18 @@ export default function Home(): JSX.Element {
   useEffect(() => {
     runValidation()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, date])
+  }, [name_sei, name_mei, date])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
 
     // synchronous local validation to decide whether to submit
-    const nameValid = name.trim().length >= 2
+    const nameSeiValid = name_sei.trim().length > 0
+    const nameMeiValid = name_mei.trim().length > 0
     const parsed = Date.parse(date)
     const dateValid = !isNaN(parsed) && parsed <= Date.now()
 
-    if (!nameValid || !dateValid) {
+    if (!nameSeiValid || !nameMeiValid || !dateValid) {
       // set errors for user feedback
       runValidation()
       return
@@ -109,7 +116,7 @@ export default function Home(): JSX.Element {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, birth_date: date, birth_hour: Number(hour) }),
+      body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour) }),
     })
 
     const body = await res.json()
@@ -155,18 +162,32 @@ export default function Home(): JSX.Element {
         <form onSubmit={submit} style={{ marginTop: 8 }}>
           <div className="form-grid">
             <div className="form-row">
-              <label htmlFor="name">名前</label>
+              <label htmlFor="name_sei">姓</label>
               <input
-                id="name"
+                id="name_sei"
                 type="text"
-                className={`input ${nameError ? 'invalid' : ''}`}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                aria-invalid={!!nameError}
-                aria-describedby={nameError ? 'name-error' : undefined}
+                className={`input ${nameSeiError ? 'invalid' : ''}`}
+                value={name_sei}
+                onChange={(e) => setNameSei(e.target.value)}
+                aria-invalid={!!nameSeiError}
+                aria-describedby={nameSeiError ? 'name-sei-error' : undefined}
                 required
               />
-              {nameError && <div id="name-error" className="error-text">{nameError}</div>}
+              {nameSeiError && <div id="name-sei-error" className="error-text">{nameSeiError}</div>}
+            </div>
+            <div className="form-row">
+              <label htmlFor="name_mei">名</label>
+              <input
+                id="name_mei"
+                type="text"
+                className={`input ${nameMeiError ? 'invalid' : ''}`}
+                value={name_mei}
+                onChange={(e) => setNameMei(e.target.value)}
+                aria-invalid={!!nameMeiError}
+                aria-describedby={nameMeiError ? 'name-mei-error' : undefined}
+                required
+              />
+              {nameMeiError && <div id="name-mei-error" className="error-text">{nameMeiError}</div>}
             </div>
             <div className="form-row">
               <label htmlFor="birth-date">生年月日</label>
@@ -210,7 +231,7 @@ export default function Home(): JSX.Element {
               <h2 className="text-2xl font-bold">鑑定結果</h2>
             </div>
             <div className="meishiki-cards">
-              <MeishikiCards analysis={result.birth_analysis?.meisiki} />
+              <MeishikiCards analysis={result.birth_analysis?.meishiki} />
             </div>
             <div className="chart">
               <FiveElementChart analysis={result.birth_analysis?.gogyo} />

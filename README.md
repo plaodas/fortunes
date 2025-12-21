@@ -32,7 +32,7 @@ pip install -r dev-requirements.txt
 
 
 Backend endpoint:
-- POST /analyze  (JSON: {name, birth_date, birth_hour})
+- POST /analyze  (JSON: {name_sei, name_mei, birth_date, birth_hour})
 
 
 

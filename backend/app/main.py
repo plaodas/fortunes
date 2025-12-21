@@ -9,7 +9,8 @@ from app.dtos.outputs.analysis_out import AnalysisOut
 from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
-from app.services.calc_name_analysis import get_kanji
+from app.services.calc_name_analysis import get_gogaku, get_kanji
+from app.services.constants import KAKUSUU_FORTUNE
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -37,7 +38,7 @@ def health():
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
-    """Perform fortune analysis based on name and birth date/hour.
+    """Perform fortune analysis based on name(sei and mei) and birth date/hour.
     Returns a dummy result for now.
     """
     # 命式と五行・五格の解析
@@ -59,9 +60,10 @@ def analyze(req: AnalyzeRequest):
     # 名前の各漢字の画数をDBから取得
     with db.SessionLocal() as session:
         # nameの各文字について画数を取得
-        strokes = [get_kanji(session, ch) for ch in req.name if ch.strip()]
+        strokes_sei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_sei if ch.strip()]
+        strokes_mei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_mei if ch.strip()]
 
-    soukaku = sum(strokes) if all(strokes) else 0
+    gogaku = get_gogaku(strokes_sei, strokes_mei)
 
     # 四柱推命と姓名判断の結果から LLMに解析を依頼
     # TODO:
@@ -74,7 +76,7 @@ def analyze(req: AnalyzeRequest):
                 "month": meishiki.get("月柱"),
                 "day": meishiki.get("日柱"),
                 "hour": meishiki.get("時柱"),
-                "summary": birth_analysis.get("四柱").get("日柱").get("まとめ"),
+                "summary": birth_analysis.get("summary"),
             },
             "gogyo": {
                 "wood": gogyo_balance.get("木", 0),
@@ -83,27 +85,23 @@ def analyze(req: AnalyzeRequest):
                 "metal": gogyo_balance.get("金", 0),
                 "water": gogyo_balance.get("水", 0),
             },
-            "summary": {
-                "personality": birth_analysis.get("総合テーマ").get("性格"),
-                "challenges": birth_analysis.get("総合テーマ").get("課題"),
-                "life_flow": birth_analysis.get("総合テーマ").get("人生の流れ"),
-            },
+            "summary": None,
         },
         "name_analysis": {
-            "tenkaku": 26,
-            "jinkaku": 15,
-            "chikaku": 11,
-            "gaikaku": 22,
-            "soukaku": soukaku,
-            "summary": "努力家で晩年安定",
+            "tenkaku": {"value": gogaku.get("天格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("天格"))},  # 天格は吉凶関係ない
+            "jinkaku": {"value": gogaku.get("人格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("人格"))},
+            "chikaku": {"value": gogaku.get("地格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("地格"))},
+            "gaikaku": {"value": gogaku.get("外格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("外格"))},
+            "soukaku": {"value": gogaku.get("総格"), "fortune": KAKUSUU_FORTUNE.get(gogaku.get("総格"))},
+            "summary": None,
         },
-        "summary": ("全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。"),
+        "summary": "",
     }
 
     # Persist to DB if possible
     try:
         db_obj = models.Analysis(
-            name=req.name,
+            name=req.name_sei + " " + req.name_mei,
             birth_date=birth_date,
             birth_hour=birth_hour,
             result_birth=result["birth_analysis"],

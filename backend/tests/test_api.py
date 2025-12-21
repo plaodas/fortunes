@@ -31,19 +31,19 @@ def test_post_analyze():
             if key == "太":
                 return model(char="太", strokes_min=4)
             elif key == "郎":
-                return model(char="郎", strokes_min=10)
+                return model(char="郎", strokes_min=9)
             else:
                 return None
 
     orig_SessionLocal = db_module.SessionLocal
     try:
         db_module.SessionLocal = lambda: FakeWriteSession()
-        payload = {"name": "太郎", "birth_date": "1990-01-01", "birth_hour": 12}
+        payload = {"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12}
         r = client.post("/analyze", json=payload)
         assert r.status_code == 200
         body = r.json()
         assert "result" in body
-        assert body["result"]["name_analysis"]["summary"] == "努力家で晩年安定"
+        assert body["result"]["name_analysis"]["soukaku"]["value"] == 13  # 4 + 9
     finally:
         db_module.SessionLocal = orig_SessionLocal
 

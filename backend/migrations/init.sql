@@ -1,7 +1,7 @@
 -- Initial migration: create a simple table to record analyses
 CREATE TABLE IF NOT EXISTS analyses (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
+  name VARCHAR NOT NULL,
   birth_date DATE NOT NULL,
   birth_hour INT NOT NULL,
   result_birth JSONB NOT NULL,
@@ -9,6 +9,19 @@ CREATE TABLE IF NOT EXISTS analyses (
   summary TEXT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+-- Create kanji table for stroke counts (imported from ucs-strokes)
+CREATE TABLE IF NOT EXISTS kanji (
+    char TEXT PRIMARY KEY,
+    codepoint TEXT NOT NULL,
+    strokes_text TEXT,
+    strokes_min INTEGER,
+    strokes_max INTEGER,
+    source TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_kanji_codepoint ON kanji(codepoint);
+
 
 -- Insert a sample seed entry
 INSERT INTO analyses (name, birth_date, birth_hour, result_birth, result_name, summary)
@@ -20,3 +33,4 @@ VALUES (
   '{"tenkaku": 26,"jinkaku": 15,"chikaku": 11,"gaikaku": 22,"soukaku": 37,"summary": "努力家で晩年安定"}',
   '全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。'
 );
+
