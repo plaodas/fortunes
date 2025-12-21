@@ -6,7 +6,7 @@ from typing import List
 from app import db, models
 from app.dtos.inputs.analyze_request import AnalyzeRequest
 from app.dtos.outputs.analysis_out import AnalysisOut
-from app.services.calc_birth_analysis import remapped_synthesize_reading
+from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from fastapi import Depends, FastAPI
@@ -58,7 +58,7 @@ def analyze(req: AnalyzeRequest):
     """gogyo_balance: {'木': 4, '火': 2, '土': 1, '金': 1, '水': 0}"""
 
     # 四柱推命 ー 総合鑑定
-    birth_analysis = remapped_synthesize_reading(meishiki, gogyo_balance)
+    birth_analysis = synthesize_reading(meishiki, gogyo_balance)
 
     # 姓名判断 ー 五格取得
     # TODO:
@@ -70,28 +70,24 @@ def analyze(req: AnalyzeRequest):
     result = {
         "birth_analysis": {
             "meishiki": {
-                "year": meishiki["年柱"],
-                "month": meishiki["月柱"],
-                "day": meishiki["日柱"],
-                "hour": meishiki["時柱"],
-                "summary": birth_analysis,
+                "year": meishiki.get("年柱"),
+                "month": meishiki.get("月柱"),
+                "day": meishiki.get("日柱"),
+                "hour": meishiki.get("時柱"),
+                "summary": birth_analysis.get("四柱").get("日柱").get("まとめ"),
             },
             "gogyo": {
-                "wood": 26,
-                "fire": 15,
-                "earth": 11,
-                "metal": 22,
-                "water": 37,
-                "summary": (
-                    "「木（金を切る）と火（金を溶かす）が多いため、日主の辛（金）は"
-                    "試練を受けやすいが、努力で輝きを増すタイプ。人間関係や環境から刺激を受けて成長する人生。"
-                ),
+                "wood": gogyo_balance.get("木", 0),
+                "fire": gogyo_balance.get("火", 0),
+                "earth": gogyo_balance.get("土", 0),
+                "metal": gogyo_balance.get("金", 0),
+                "water": gogyo_balance.get("水", 0),
             },
-            "summary": (
-                "美意識やこだわりを持ち、周囲から「個性的」「センスがある」と見られやすい。"
-                "人との縁が強く、交流や人脈が人生のテーマ。試練を通じて磨かれる運勢で、困難を乗り越えるほど輝きが増す。"
-                "晩年は人間関係に恵まれ、後進を育てる立場に向く。柔軟性・流れ」を意識するとさらに良い"
-            ),
+            "summary": {
+                "personality": birth_analysis.get("総合テーマ").get("性格"),
+                "challenges": birth_analysis.get("総合テーマ").get("性格"),
+                "life_flow": birth_analysis.get("総合テーマ").get("人生の流れ"),
+            },
         },
         "name_analysis": {
             "tenkaku": 26,
