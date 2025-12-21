@@ -98,7 +98,7 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
     # 総合まとめ（AIに渡す前の構造化データ）
     summary = {
         "四柱": pillar_interpretations,
-        "五行バランス": wuxing_interpretation,
+        "五行": wuxing_interpretation,
         "総合テーマ": {
             "性格": wuxing_interpretation["性格傾向"],
             "課題": wuxing_interpretation["課題"],

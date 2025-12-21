@@ -7,3 +7,6 @@ sqlalchemy==2.0.45
 psycopg2-binary==2.9.6
 pytest==7.4.0
 httpx==0.24.1
+
+# Template rendering
+Jinja2==3.1.2

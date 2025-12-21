@@ -9,7 +9,9 @@ from app.dtos.outputs.analysis_out import AnalysisOut
 from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
-from app.services.calc_name_analysis import get_kanji
+from app.services.calc_name_analysis import get_gogaku, get_kanji
+from app.services.make_story import render_life_analysis
+from app.services.prompts.template_life_analysis import TEMPLATE
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -37,7 +39,7 @@ def health():
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
-    """Perform fortune analysis based on name and birth date/hour.
+    """Perform fortune analysis based on name(sei and mei) and birth date/hour.
     Returns a dummy result for now.
     """
     # 命式と五行・五格の解析
@@ -59,12 +61,24 @@ def analyze(req: AnalyzeRequest):
     # 名前の各漢字の画数をDBから取得
     with db.SessionLocal() as session:
         # nameの各文字について画数を取得
-        strokes = [get_kanji(session, ch) for ch in req.name if ch.strip()]
+        strokes_sei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_sei if ch.strip()]
+        strokes_mei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_mei if ch.strip()]
 
-    soukaku = sum(strokes) if all(strokes) else 0
+    gogaku = get_gogaku(strokes_sei, strokes_mei)
+    """
+    gogaku: {"五格": {
+        '天格': {"値":10, "吉凶":"大凶", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '人格': {"値":15, "吉凶":"大吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '地格': {"値":20, "吉凶":"吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '外格': {"値":15, "吉凶":"中吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}},
+        '総格': {"値":30, "吉凶":"小吉", "桃源":{"長文":"桃源の風があなたを包み、道は光に満ちて開けていく。"}}
+    }}
+    """
 
     # 四柱推命と姓名判断の結果から LLMに解析を依頼
     # TODO:
+    ctx: dict = birth_analysis | gogaku
+    prompt = render_life_analysis(ctx, TEMPLATE)
 
     # Return the dummy result structure specified in the prompt
     result = {
@@ -74,7 +88,7 @@ def analyze(req: AnalyzeRequest):
                 "month": meishiki.get("月柱"),
                 "day": meishiki.get("日柱"),
                 "hour": meishiki.get("時柱"),
-                "summary": birth_analysis.get("四柱").get("日柱").get("まとめ"),
+                "summary": birth_analysis.get("summary"),
             },
             "gogyo": {
                 "wood": gogyo_balance.get("木", 0),
@@ -83,27 +97,23 @@ def analyze(req: AnalyzeRequest):
                 "metal": gogyo_balance.get("金", 0),
                 "water": gogyo_balance.get("水", 0),
             },
-            "summary": {
-                "personality": birth_analysis.get("総合テーマ").get("性格"),
-                "challenges": birth_analysis.get("総合テーマ").get("課題"),
-                "life_flow": birth_analysis.get("総合テーマ").get("人生の流れ"),
-            },
+            "summary": None,
         },
         "name_analysis": {
-            "tenkaku": 26,
-            "jinkaku": 15,
-            "chikaku": 11,
-            "gaikaku": 22,
-            "soukaku": soukaku,
-            "summary": "努力家で晩年安定",
+            "tenkaku": {"value": gogaku.get("五格").get("天格").get("値")},
+            "jinkaku": {"value": gogaku.get("五格").get("人格").get("値")},
+            "chikaku": {"value": gogaku.get("五格").get("地格").get("値")},
+            "gaikaku": {"value": gogaku.get("五格").get("外格").get("値")},
+            "soukaku": {"value": gogaku.get("五格").get("総格").get("値")},
+            "summary": None,
         },
-        "summary": ("全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。"),
+        "summary": prompt,
     }
 
     # Persist to DB if possible
     try:
         db_obj = models.Analysis(
-            name=req.name,
+            name=req.name_sei + " " + req.name_mei,
             birth_date=birth_date,
             birth_hour=birth_hour,
             result_birth=result["birth_analysis"],
