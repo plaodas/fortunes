@@ -9,9 +9,9 @@ from app.dtos.outputs.analysis_out import AnalysisOut
 from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
+from app.services.calc_name_analysis import get_kanji
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 # Use a module-level Depends wrapper to satisfy ruff B008
@@ -40,10 +40,7 @@ def analyze(req: AnalyzeRequest):
     """Perform fortune analysis based on name and birth date/hour.
     Returns a dummy result for now.
     """
-    # TODO:
-    # ここで命式と五行・五格の解析を行う。
-    # 解析ロジックは省略し、ダミーの結果を返す
-
+    # 命式と五行・五格の解析
     birth_date: datetime.date = datetime.fromisoformat(req.birth_date).date()
     birth_hour: int = int(req.birth_hour)
 
@@ -59,7 +56,12 @@ def analyze(req: AnalyzeRequest):
     birth_analysis = synthesize_reading(meishiki, gogyo_balance)
 
     # 姓名判断 ー 五格取得
-    # TODO:
+    # 名前の各漢字の画数をDBから取得
+    with db.SessionLocal() as session:
+        # nameの各文字について画数を取得
+        strokes = [get_kanji(session, ch) for ch in req.name if ch.strip()]
+
+    soukaku = sum(strokes) if all(strokes) else 0
 
     # 四柱推命と姓名判断の結果から LLMに解析を依頼
     # TODO:
@@ -83,7 +85,7 @@ def analyze(req: AnalyzeRequest):
             },
             "summary": {
                 "personality": birth_analysis.get("総合テーマ").get("性格"),
-                "challenges": birth_analysis.get("総合テーマ").get("性格"),
+                "challenges": birth_analysis.get("総合テーマ").get("課題"),
                 "life_flow": birth_analysis.get("総合テーマ").get("人生の流れ"),
             },
         },
@@ -92,7 +94,7 @@ def analyze(req: AnalyzeRequest):
             "jinkaku": 15,
             "chikaku": 11,
             "gaikaku": 22,
-            "soukaku": 37,
+            "soukaku": soukaku,
             "summary": "努力家で晩年安定",
         },
         "summary": ("全体的にバランスが良く、特に水の要素が強いです。柔軟性と流れを意識するとさらに良いでしょう。名前の五格も努力家で晩年安定しています。"),
@@ -115,30 +117,6 @@ def analyze(req: AnalyzeRequest):
         logger.warning("Could not persist analysis to DB: %s", e)
 
     return {"input": req.dict(), "result": result}
-
-
-@app.get("/kanji/{char}")
-def get_kanji(char: str):
-    """Return kanji stroke info for a single character.
-
-    Example: GET /kanji/漢
-    """
-    if not char:
-        return {"error": "provide a single character"}
-    # only first character
-    ch = char[0]
-    with db.engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT char, codepoint, strokes_text, strokes_min, strokes_max, source FROM kanji WHERE char = :ch"),
-            {"ch": ch},
-        ).first()
-
-    if not row:
-        return {"found": False}
-
-    # row is a Row; convert to dict
-    data = dict(row._mapping)
-    return {"found": True, "kanji": data}
 
 
 @app.get("/analyses", response_model=List[AnalysisOut])
