@@ -34,12 +34,12 @@ def interpret_pillar(pillar_name: str, kanshi: str):
     return {
         "柱": pillar_name,
         "干支": kanshi,
-        "領域": pillar_meaning,
+        "意味": pillar_meaning,
         "十干の性質": stem_trait,
         "十二支の性質": branch_trait,
         "まとめ": (
-            f"{pillar_name}は{pillar_meaning}。"
-            f"{stem_trait}、{branch_trait}の性質が強く表れる。"
+            f"{pillar_name}は{pillar_meaning}"
+            f"{stem_trait}{branch_trait}の性質が強く表れる。"
         ),
     }
 
@@ -116,12 +116,3 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
     }
 
     return summary
-
-
-# 6. この構造化データをAIに渡すと…
-# あなたが最初に示したような
-# - 命式の特徴
-# - 五行バランス
-# - 総合的な傾向
-# - 桃源紀行風の鑑定文
-# を 安いモデルでも高品質に生成できます。

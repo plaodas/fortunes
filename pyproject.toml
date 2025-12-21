@@ -5,7 +5,7 @@ line-length = 88
 profile = "black"
 
 [tool.ruff]
-line-length = 88
+line-length = 200
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C", "I", "B"]
