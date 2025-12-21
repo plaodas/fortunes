@@ -11,6 +11,7 @@ from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 # Use a module-level Depends wrapper to satisfy ruff B008
@@ -123,6 +124,32 @@ def analyze(req: AnalyzeRequest):
         logger.warning("Could not persist analysis to DB: %s", e)
 
     return {"input": req.dict(), "result": result}
+
+
+@app.get("/kanji/{char}")
+def get_kanji(char: str):
+    """Return kanji stroke info for a single character.
+
+    Example: GET /kanji/漢
+    """
+    if not char:
+        return {"error": "provide a single character"}
+    # only first character
+    ch = char[0]
+    with db.engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT char, codepoint, strokes_text, strokes_min, strokes_max, source FROM kanji WHERE char = :ch"
+            ),
+            {"ch": ch},
+        ).first()
+
+    if not row:
+        return {"found": False}
+
+    # row is a Row; convert to dict
+    data = dict(row._mapping)
+    return {"found": True, "kanji": data}
 
 
 @app.get("/analyses", response_model=List[AnalysisOut])
