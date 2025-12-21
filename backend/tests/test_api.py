@@ -1,4 +1,5 @@
 from app import db as db_module
+from app import models
 from app.main import app
 from fastapi.testclient import TestClient
 
@@ -25,6 +26,14 @@ def test_post_analyze():
 
         def commit(self):
             self.committed = True
+
+        def get(self, model: models.Kanji, key: str):
+            if key == "太":
+                return model(char="太", strokes_min=4)
+            elif key == "郎":
+                return model(char="郎", strokes_min=10)
+            else:
+                return None
 
     orig_SessionLocal = db_module.SessionLocal
     try:
