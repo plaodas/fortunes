@@ -5,15 +5,21 @@ Usage:
 
 This will use the `DATABASE_URL` environment variable (same as the app).
 """
+
 import os
+
 from app import db
 
 
 def run_migrations():
-    migrations_file = os.path.join(os.path.dirname(__file__), "backend", "migrations", "init.sql")
+    migrations_file = os.path.join(
+        os.path.dirname(__file__), "backend", "migrations", "init.sql"
+    )
     # support running both from repo root and from backend folder
     if not os.path.exists(migrations_file):
-        migrations_file = os.path.join(os.path.dirname(__file__), "migrations", "init.sql")
+        migrations_file = os.path.join(
+            os.path.dirname(__file__), "migrations", "init.sql"
+        )
 
     if not os.path.exists(migrations_file):
         print("No migrations file found at expected location.")

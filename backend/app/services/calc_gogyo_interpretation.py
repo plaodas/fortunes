@@ -14,7 +14,7 @@ from typing import Any
 
 # 1. 五行の意味辞書（性格・行動傾向）
 # まずは五行ごとの基本性質を辞書化します。
-from .constants import WUXING_TRAITS
+from .constants import STEM_TO_ELEMENT, WUXING_TRAITS, XIANGKE, XIANGSHENG
 
 
 # 2. 五行の強弱を判定するロジック
@@ -32,9 +32,8 @@ def analyze_strength(balance: dict) -> tuple[list[str], list[str]]:
     return strong, weak
 
 
-# 3. 日主（本人の五行）との関係（相生・相剋）
-# constants.py に定義済みの辞書を利用します。
-from .constants import STEM_TO_ELEMENT, XIANGSHENG, XIANGKE
+# 1. 五行の意味辞書（性格・行動傾向）
+# まずは五行ごとの基本性質を辞書化します。
 
 
 # 4. 五行バランス → 性格・運勢の解釈ロジック
@@ -54,7 +53,7 @@ def interpret_wuxing(balance: dict, day_stem: str) -> dict[str, Any]:
         "弱い五行": weak,
         "性格": [],
         "課題": [],
-        "相性": []
+        "相性": [],
     }
 
     # 強い五行の性格
@@ -71,18 +70,14 @@ def interpret_wuxing(balance: dict, day_stem: str) -> dict[str, Any]:
     # 日主を弱らせる五行
     harm_ele = XIANGKE[day_ele]
 
-    interpretation["相性"].append(f"あなた（日主：{day_ele}）を助けるのは「{help_ele}」の気。")
+    interpretation["相性"].append(
+        f"あなた（日主：{day_ele}）を助けるのは「{help_ele}」の気。"
+    )
     interpretation["相性"].append(f"あなたを消耗させやすいのは「{harm_ele}」の気。")
 
     return interpretation
 
 
-
-
-
 #  6. このロジックをAIに渡すと…
 # この「解釈結果」をAIに渡せば、
 # 高品質な鑑定文（桃源紀行風） を安いモデルでも生成できます。
-
-
-

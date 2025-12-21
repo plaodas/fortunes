@@ -7,7 +7,8 @@
 - 十二支 → 五行（蔵干を含む）
 を数えて、最終的に 木・火・土・金・水の強弱 を出します。
 """
-from .constants import STEM_TO_ELEMENT, BRANCH_TO_MAIN_STEM
+
+from .constants import BRANCH_TO_MAIN_STEM, STEM_TO_ELEMENT
 
 
 # 五行カウンターの初期化
@@ -21,8 +22,8 @@ def _add_pillar_to_wuxing(pillar: str, wuxing: dict[str, int]) -> dict[str, int]
     pillar: '甲子' のような2文字
     wuxing: 五行カウンター
     """
-    stem = pillar[0]   # 十干
-    branch = pillar[1] # 十二支
+    stem = pillar[0]  # 十干
+    branch = pillar[1]  # 十二支
 
     # 十干の五行
     stem_ele = STEM_TO_ELEMENT.get(stem)
@@ -53,9 +54,7 @@ def calc_wuxing_balance(meishiki: dict[str, str]) -> dict[str, int]:
     return wuxing
 
 
-
 # あなたが示した文章の五行バランスとほぼ一致します。
-
 
 
 # これでできること
@@ -73,4 +72,3 @@ def calc_wuxing_balance(meishiki: dict[str, str]) -> dict[str, int]:
 # - AIに渡すプロンプトテンプレート
 # - 桃源紀行風の文章生成テンプレート
 # どれを作りましょうか。
-

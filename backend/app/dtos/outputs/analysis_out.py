@@ -10,4 +10,3 @@ class AnalysisOut(BaseModel):
     result_name: dict
     summary: str
     created_at: str | None = None
-

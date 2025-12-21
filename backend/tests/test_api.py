@@ -1,10 +1,8 @@
-from fastapi.testclient import TestClient
+from app import db as db_module
 from app.main import app
-
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
-
-from app import db as db_module
 
 
 def test_health():
@@ -39,8 +37,6 @@ def test_post_analyze():
         assert body["result"]["name_analysis"]["summary"] == "努力家で晩年安定"
     finally:
         db_module.SessionLocal = orig_SessionLocal
-
-
 
 
 class FakeQuery:
@@ -121,5 +117,3 @@ def test_delete_analysis_deleted():
     assert r.status_code == 200
     assert r.json() == {"status": "deleted"}
     app.dependency_overrides.clear()
-
-

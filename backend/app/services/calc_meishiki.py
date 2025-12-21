@@ -9,13 +9,15 @@
 - 月干は「年干＋月番号」ルール
 という、実装しやすい近似を使っています。
 """
+
 from datetime import date, datetime
 
 # 1. 基本データの準備
-from .constants import TENKAN, JUNISHI, HOUR_STEM_TABLE
+from .constants import HOUR_STEM_TABLE, JUNISHI, TENKAN
 
 # 甲子を基準にした60干支
 _KANSHI = [TENKAN[i % 10] + JUNISHI[i % 12] for i in range(60)]
+
 
 # 2. 年柱の計算（簡易版：立春を2/4固定）
 def _get_year_pillar(dt: datetime) -> str:
@@ -51,6 +53,7 @@ def _get_month_index(dt: datetime) -> int:
     # 2月を1としてローテーション
     idx = (m - 2) % 12 + 1
     return idx
+
 
 def _get_month_pillar(dt: datetime, year_pillar: str):
     """
@@ -155,4 +158,3 @@ def get_meishiki(dt: datetime) -> dict:
         "日柱": day_p,
         "時柱": hour_p,
     }
-

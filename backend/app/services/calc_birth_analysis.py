@@ -9,8 +9,18 @@
 これらをすべてロジック化し、
 AIに渡す前の“構造化された鑑定データ” を作ります。
 """
+
 # 0. 必要なインポート
-from app.services.constants import BRANCH_TRAITS, PILLAR_MEANING, STEM_TRAITS, WUXING_TRAITS, STEM_TO_ELEMENT, XIANGSHENG, XIANGKE
+from app.services.constants import (
+    BRANCH_TRAITS,
+    PILLAR_MEANING,
+    STEM_TO_ELEMENT,
+    STEM_TRAITS,
+    WUXING_TRAITS,
+    XIANGKE,
+    XIANGSHENG,
+)
+
 
 # 1. 四柱の解釈ロジック（前回作ったロジックを統合）
 def interpret_pillar(pillar_name: str, kanshi: str):
@@ -27,8 +37,12 @@ def interpret_pillar(pillar_name: str, kanshi: str):
         "領域": pillar_meaning,
         "十干の性質": stem_trait,
         "十二支の性質": branch_trait,
-        "まとめ": f"{pillar_name}は{pillar_meaning}。{stem_trait}、{branch_trait}の性質が強く表れる。"
+        "まとめ": (
+            f"{pillar_name}は{pillar_meaning}。"
+            f"{stem_trait}、{branch_trait}の性質が強く表れる。"
+        ),
     }
+
 
 # 2. 五行の強弱を判定するロジック
 # 五行バランスは、命式から得られたカウント（例：木4 火2 土1 金1 水0）を使います。
@@ -59,10 +73,7 @@ def interpret_wuxing(balance: dict, day_stem: str):
         "弱い五行": weak,
         "性格傾向": [WUXING_TRAITS[e]["強い"] for e in strong],
         "課題": [WUXING_TRAITS[e]["弱い"] for e in weak],
-        "相性": {
-            "助ける五行": help_ele,
-            "弱らせる五行": harm_ele
-        }
+        "相性": {"助ける五行": help_ele, "弱らせる五行": harm_ele},
     }
 
 
@@ -82,8 +93,7 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
 
     # 四柱の解釈
     pillar_interpretations = {
-        name: interpret_pillar(name, kanshi)
-        for name, kanshi in meishiki.items()
+        name: interpret_pillar(name, kanshi) for name, kanshi in meishiki.items()
     }
 
     # 五行バランスの解釈
@@ -100,14 +110,12 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
                 pillar_interpretations["年柱"]["まとめ"],
                 pillar_interpretations["月柱"]["まとめ"],
                 pillar_interpretations["日柱"]["まとめ"],
-                pillar_interpretations["時柱"]["まとめ"]
-            ]
-        }
+                pillar_interpretations["時柱"]["まとめ"],
+            ],
+        },
     }
 
     return summary
-
-
 
 
 # 6. この構造化データをAIに渡すと…
