@@ -1,7 +1,5 @@
 import json
 import logging
-import os
-import time
 from datetime import datetime
 from typing import List
 
@@ -11,7 +9,6 @@ from app.dtos.outputs.analysis_out import AnalysisOut
 from app.services.calc_meishiki import get_meishiki
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 # Use a module-level Depends wrapper to satisfy ruff B008
@@ -28,48 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def apply_migrations():
-    """Apply SQL migrations found in backend/migrations/init.sql if DB is reachable.
-
-    This is idempotent and will be skipped if the DB is not available (useful for
-    local dev where a DB may not be present).
-    """
-    migrations_file = os.path.join(
-        os.path.dirname(__file__), "..", "migrations", "init.sql"
-    )
-    if not os.path.exists(migrations_file):
-        logger.info("No migrations file found at %s", migrations_file)
-        return
-
-    with open(migrations_file, "r", encoding="utf-8") as f:
-        sql = f.read()
-
-    # Retry loop: wait for DB to become available before applying migrations
-    max_attempts = int(os.getenv("MIGRATE_MAX_ATTEMPTS", "15"))
-    delay_seconds = float(os.getenv("MIGRATE_DELAY_SECONDS", "2"))
-    attempt = 0
-    while attempt < max_attempts:
-        attempt += 1
-        try:
-            with db.engine.begin() as conn:
-                conn.exec_driver_sql(sql)
-            logger.info("Applied migrations from %s", migrations_file)
-            return
-        except OperationalError as oe:
-            logger.warning(
-                "DB not ready (attempt %d/%d): %s", attempt, max_attempts, oe
-            )
-            time.sleep(delay_seconds)
-        except Exception as e:
-            logger.error("Failed to apply migrations: %s", e)
-            return
-
-    logger.error(
-        "Exceeded max attempts (%d) applying migrations; giving up.", max_attempts
-    )
 
 
 @app.get("/health")
