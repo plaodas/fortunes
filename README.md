@@ -40,11 +40,6 @@ flowchart TD
     db["`db（postgresql）
       🔵鑑定履歴保存
     `"]
-    litellm["`litellm（LiteLLMサーバー）
-      🔵OpenAI互換エンドポイント
-      🔵モデルルーティング：deepseek/gpt/gemini
-      🔵ログ／レート／リトライ制御
-    `"]
   end
   deepseek("DeepSeek API")
   openai("OpenAI API")
@@ -57,21 +52,17 @@ flowchart TD
 
   user <-->|認証は後回し| frontend
   frontend <--> backend
-  backend <--> litellm
   backend <--> db
-  litellm <--> deepseek
-  litellm <--> openai
-  litellm <--> google
-
   backend --> monitor
-  litellm --> monitor
+  backend <--> openai
+  backend <--> google
 
   %% 幅を指定するクラス定義（pxで指定）
 
   classDef wideCard stroke:#333,stroke-width:1px
   class * wideCard
   classDef dev fill:#fff,stroke:#333,stroke-width:2px,width:400px;text-align:center
-  class frontend,backend,litellm,db dev
+  class frontend,backend,db dev
 
 ```
 
