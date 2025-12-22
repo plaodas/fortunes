@@ -64,9 +64,9 @@ litellm_settings:
 # ============================================
 # キャッシュ設定（デモ用途なら memory で十分）
 # ============================================
-  cache: true
-  cache_type: "memory"
-  cache_ttl: 3600
+  # cache: true
+  # cache_type: "memory"
+  # cache_ttl: 3600
 
 
 
