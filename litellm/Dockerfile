@@ -7,13 +7,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --upgrade pip
-RUN pip install --no-cache-dir litellm
-
+RUN pip install --no-cache-dir litellm[proxy]
 WORKDIR /app
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8080
+EXPOSE 4000
 
 ENTRYPOINT ["/app/entrypoint.sh"]

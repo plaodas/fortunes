@@ -17,14 +17,14 @@ services:
     env_file:
       - litellm/env_all.env
     ports:
-      - "8080:8080"
+      - "4000:4000"
     volumes:
-      - ./prompts:/app/prompts:rw
+      - ./litellm/litellm_config.yaml:/app/litellm_config.yaml
+      - ./litellm/logs:/app/logs
       # Mount your Google service account JSON here (read-only)
       - ./secrets/google-service-account.json:/secrets/google-service-account.json:ro
     environment:
       - TZ=UTC
-      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-service-account.json
 
   backend:
     build: ./backend

@@ -1,7 +1,7 @@
 fastapi==0.100.0
 uvicorn[standard]==0.23.1
 # Use a newer pydantic patch release for compatibility with Python 3.12
-pydantic==1.10.15
+pydantic==2.12.5
 # Pin SQLAlchemy to a 2.0.x release compatible with the environment
 sqlalchemy==2.0.45
 psycopg2-binary==2.9.6
@@ -10,3 +10,4 @@ httpx==0.24.1
 
 # Template rendering
 Jinja2==3.1.2
+litellm==1.80.11

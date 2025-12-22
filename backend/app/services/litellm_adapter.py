@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 DEBUG_FAKE = os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
 
 
-def sumthing(client):
+def something(client):
     pass
 
 
@@ -63,7 +63,7 @@ def generate(provider: str, model: str, prompt: str, **kwargs) -> str:
             # The exact call varies by SDK version and model type; here's a sketch
             client = aiplatform.gapic.PredictionServiceClient()
             # TODO: fill project/location/endpoint and call predict() accordingly
-            sumthing(client)
+            something(client)
 
             raise NotImplementedError("Gemini/Vertex AI call not implemented in sample adapter")
         except ImportError as e:
