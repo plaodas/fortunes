@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  litellm:
+    build:
+      context: ./docker/litellm
+    container_name: fortunes_litellm
+    tty: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./prompts:/app/prompts:rw
+    environment:
+      - TZ=UTC

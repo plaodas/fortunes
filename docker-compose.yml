@@ -10,6 +10,17 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  litellm:
+    build: ./docker/litellm
+    container_name: fortunes_litellm
+    tty: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./prompts:/app/prompts:rw
+    environment:
+      - TZ=UTC
+
   backend:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -20,6 +31,7 @@ services:
       DATABASE_URL: postgres://postgres:password@db:5432/fortunes
     depends_on:
       - db
+      - litellm
 
   frontend:
     image: node:18
