@@ -6,6 +6,12 @@
 算出は一般的なものを更に簡略化しています。
 AI駆動開発の練習用です。認証、厳密なバリデーション、ログ監視などは未実装です。
 
+### 画面イメージ
+
+<img src="images/sample_1.png" height="400">
+<img src="images/sample_2.png" height="400">
+
+
 # 構成
 コンテナは以下のような構成です
 - frontend: node, react, next
@@ -86,7 +92,7 @@ docker compose up --build -d
 
 # DBのマイグレーション
 PYTHONPATH=./backend python backend/manage_migrate.py # テーブル作成
-psql "$DATABASE_URL" -f backend/migrations/kanji_data.dump.sql # dumpファイルをインポート
+psql "$DATABASE_URL" -f backend/migrations/kanji_data.dump.sql # "$DATABASE_URL"はご自身の環境に合わせて修正してください
 
 # frontend: http://localhost:3000
 # backend: http://localhost:8000
