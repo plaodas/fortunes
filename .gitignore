@@ -102,4 +102,5 @@ reports/
 queries/
 .ruff_cache/
 vendor/
+logs/
 
