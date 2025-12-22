@@ -15,6 +15,7 @@ from app.services.calc_meishiki import get_meishiki
 from app.services.calc_name_analysis import get_gogaku, get_kanji
 from app.services.make_story import render_life_analysis
 from app.services.prompts.template_life_analysis import TEMPLATE
+from app.services.prompts.template_life_analysis_summary import TEMPLATE_SUMMARY
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -102,7 +103,8 @@ def analyze(req: AnalyzeRequest):
     # 四柱推命と姓名判断の結果から LLMに解析を依頼
     # TODO:
     ctx: dict = birth_analysis | gogaku
-    prompt = render_life_analysis(ctx, TEMPLATE)
+    prompt_detail = render_life_analysis(ctx, TEMPLATE)
+    prompt_summary = render_life_analysis(ctx, TEMPLATE_SUMMARY)
 
     # Return the dummy result structure specified in the prompt
     result = {
@@ -121,7 +123,7 @@ def analyze(req: AnalyzeRequest):
                 "metal": gogyo_balance.get("金", 0),
                 "water": gogyo_balance.get("水", 0),
             },
-            "summary": None,
+            "summary": prompt_detail,
         },
         "name_analysis": {
             "tenkaku": gogaku.get("五格").get("天格").get("値"),
@@ -131,7 +133,7 @@ def analyze(req: AnalyzeRequest):
             "soukaku": gogaku.get("五格").get("総格").get("値"),
             "summary": None,
         },
-        "summary": prompt,
+        "summary": prompt_summary,
     }
 
     # Persist to DB if possible

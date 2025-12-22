@@ -1,0 +1,85 @@
+# ============================================
+# モデル一覧（OpenAI / Azure / Gemini / Local）
+# ============================================
+model_list:
+  # -------------------------
+  # OpenAI
+  # -------------------------
+  - model_name: high_quality
+    litellm_params:
+      model: gpt-4o
+
+  - model_name: cheap_summary
+    litellm_params:
+      model: gpt-4o-mini
+
+  # -------------------------
+  # Azure OpenAI
+  # -------------------------
+  - model_name: azure_high_quality
+    litellm_params:
+      model: azure/gpt-4o
+      api_key: ${AZURE_API_KEY}
+      api_base: ${AZURE_API_BASE}
+      api_version: ${AZURE_API_VERSION}
+
+  # -------------------------
+  # Google Gemini（AI Studio）
+  # -------------------------
+  - model_name: gemini_flash
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: ${GEMINI_API_KEY}
+
+  - model_name: gemini_pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: ${GEMINI_API_KEY}
+
+  # -------------------------
+  # Vertex AI（サービスアカウント）
+  # -------------------------
+  - model_name: vertex_flash
+    litellm_params:
+      model: vertex_ai/gemini-1.5-flash
+      project: ${GCP_PROJECT}
+      location: ${GCP_LOCATION}
+      credentials: ${GOOGLE_APPLICATION_CREDENTIALS}
+
+  # -------------------------
+  # Local LLM（Ollama）
+  # -------------------------
+  - model_name: local_mistral
+    litellm_params:
+      model: ollama/mistral
+
+# ============================================
+# ログ設定
+# ============================================
+litellm_settings:
+  log_level: INFO
+  log_file: "/app/logs/litellm.log"
+  log_format: "json"
+
+# ============================================
+# キャッシュ設定（デモ用途なら memory で十分）
+# ============================================
+  cache: true
+  cache_type: "memory"
+  cache_ttl: 3600
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
