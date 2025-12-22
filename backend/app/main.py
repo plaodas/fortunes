@@ -115,14 +115,17 @@ def analyze(req: AnalyzeRequest):
             model="gemini/gemini-1.5-pro",
             messages=[{"role": "user", "content": prompt_detail}],
             temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
+            num_retries=3,  # エラーが出たら3回まで自動で再試行する
         )
         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
         analysis_detail = response.choices[0].message.content
 
         response = completion(
-            model="gpt-4o-mini",
+            # model="gpt-4o-mini",
+            model="gemini/gemini-1.5-flash",
             messages=[{"role": "user", "content": prompt_summary}],
             temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
+            num_retries=3,  # エラーが出たら3回まで自動で再試行する
         )
         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
         analysis_summary = response.choices[0].message.content
