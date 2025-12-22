@@ -6,6 +6,9 @@ from typing import List
 from app import db, models
 from app.dtos.inputs.analyze_request import AnalyzeRequest
 from app.dtos.outputs.analysis_out import AnalysisOut
+
+# adapter for provider switching
+from app.services import litellm_adapter
 from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
@@ -14,6 +17,7 @@ from app.services.make_story import render_life_analysis
 from app.services.prompts.template_life_analysis import TEMPLATE
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 # Use a module-level Depends wrapper to satisfy ruff B008
@@ -35,6 +39,26 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+class LLMRequest(BaseModel):
+    provider: str
+    model: str
+    prompt: str
+
+
+@app.post("/llm")
+def llm(req: LLMRequest):
+    """Generate text from the selected provider/model for a single request.
+
+    This endpoint demonstrates per-request provider switching. The environment
+    should contain the API keys (see docs/docker/litellm/env_all.env).
+    """
+    try:
+        out = litellm_adapter.generate(req.provider, req.model, req.prompt)
+    except Exception as e:
+        return {"error": str(e)}
+    return {"provider": req.provider, "model": req.model, "response": out}
 
 
 @app.post("/analyze")

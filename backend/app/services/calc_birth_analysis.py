@@ -115,7 +115,7 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
 
 
 # キーの日本語ー＞英語変換ロジック
-def _remap_keys(obj):
+def _remap_keys(obj: dict):
     """Recursively remap dict keys according to KEY_MAP."""
     if isinstance(obj, dict):
         new = {}
@@ -128,7 +128,6 @@ def _remap_keys(obj):
     return obj
 
 
-# ラッパー関数：総合鑑定後にキーを英語に変換
-def remapped_synthesize_reading(meishiki: dict, balance: dict) -> dict:
-    original = synthesize_reading(meishiki, balance)
-    return _remap_keys(original)
+# ラッパー関数：総合鑑定後のキーを英語に変換(未使用)
+def remapped_synthesize_reading(life_analysis: dict) -> dict:
+    return _remap_keys(life_analysis)

@@ -10,6 +10,22 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  litellm:
+    build: ./litellm
+    container_name: fortunes_litellm
+    tty: true
+    env_file:
+      - litellm/env_all.env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./prompts:/app/prompts:rw
+      # Mount your Google service account JSON here (read-only)
+      - ./secrets/google-service-account.json:/secrets/google-service-account.json:ro
+    environment:
+      - TZ=UTC
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-service-account.json
+
   backend:
     build: ./backend
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -20,6 +36,7 @@ services:
       DATABASE_URL: postgres://postgres:password@db:5432/fortunes
     depends_on:
       - db
+      - litellm
 
   frontend:
     image: node:18
