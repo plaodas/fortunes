@@ -1,5 +1,7 @@
 import json
 import logging
+
+# import os
 from datetime import datetime
 from typing import List
 
@@ -21,8 +23,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-import litellm
-from litellm import completion
+# import litellm
+# from litellm import completion
 
 # Use a module-level Depends wrapper to satisfy ruff B008
 get_db_dependency = Depends(db.get_db)
@@ -109,42 +111,47 @@ def analyze(req: AnalyzeRequest):
     prompt_summary = render_life_analysis(ctx, TEMPLATE_SUMMARY)
 
     # TODO: Tracking costs per provider/model
+    # DEBUG_FAKE = os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
 
-    try:
-        response = completion(
-            model="gemini/gemini-1.5-pro",
-            messages=[{"role": "user", "content": prompt_detail}],
-            temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
-            num_retries=3,  # エラーが出たら3回まで自動で再試行する
-        )
-        # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-        analysis_detail = response.choices[0].message.content
+    # if DEBUG_FAKE:
+    #     analysis_detail = "[FAKE RESP] Detailed analysis response"
+    #     analysis_summary = "[FAKE RESP] Summary analysis response"
+    # else:
+    #     try:
+    #         response = completion(
+    #             model="gemini/gemini-1.5-pro",
+    #             messages=[{"role": "user", "content": prompt_detail}],
+    #             temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
+    #             num_retries=3,  # エラーが出たら3回まで自動で再試行する
+    #         )
+    #         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
+    #         analysis_detail = response.choices[0].message.content
 
-        response = completion(
-            # model="gpt-4o-mini",
-            model="gemini/gemini-1.5-flash",
-            messages=[{"role": "user", "content": prompt_summary}],
-            temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
-            num_retries=3,  # エラーが出たら3回まで自動で再試行する
-        )
-        # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-        analysis_summary = response.choices[0].message.content
+    #         response = completion(
+    #             # model="gpt-4o-mini",
+    #             model="gemini/gemini-1.5-flash",
+    #             messages=[{"role": "user", "content": prompt_summary}],
+    #             temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
+    #             num_retries=3,  # エラーが出たら3回まで自動で再試行する
+    #         )
+    #         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
+    #         analysis_summary = response.choices[0].message.content
 
-    except litellm.AuthenticationError as e:
-        # Thrown when the API key is invalid
-        print(f"Authentication failed: {e}")
-        return {"error": "LLMが利用できません。しばらく経ってから再度お試しください。"}
-    except litellm.RateLimitError as e:
-        # Thrown when you've exceeded your rate limit
-        print(f"Rate limited: {e}")
-        return {"error": "LLM利用上限に達しました。しばらく経ってから再度お試しください。"}
-    except litellm.APIError as e:
-        # Thrown for general API errors
-        print(f"API error: {e}")
-        return {"error": "しばらく経ってから再度お試しください。"}
-    except Exception as e:
-        print(f"LLM response: {e}")
-        return {"error": "しばらく経ってから再度お試しください。"}
+    #     except litellm.AuthenticationError as e:
+    #         # Thrown when the API key is invalid
+    #         print(f"Authentication failed: {e}")
+    #         return {"error": "LLMが利用できません。しばらく経ってから再度お試しください。"}
+    #     except litellm.RateLimitError as e:
+    #         # Thrown when you've exceeded your rate limit
+    #         print(f"Rate limited: {e}")
+    #         return {"error": "LLM利用上限に達しました。しばらく経ってから再度お試しください。"}
+    #     except litellm.APIError as e:
+    #         # Thrown for general API errors
+    #         print(f"API error: {e}")
+    #         return {"error": "しばらく経ってから再度お試しください。"}
+    #     except Exception as e:
+    #         print(f"LLM response: {e}")
+    #         return {"error": "しばらく経ってから再度お試しください。"}
 
     # Return the dummy result structure specified in the prompt
     result = {
@@ -163,7 +170,7 @@ def analyze(req: AnalyzeRequest):
                 "metal": gogyo_balance.get("金", 0),
                 "water": gogyo_balance.get("水", 0),
             },
-            "summary": analysis_detail,
+            "summary": prompt_detail,
         },
         "name_analysis": {
             "tenkaku": gogaku.get("五格").get("天格").get("値"),
@@ -173,7 +180,7 @@ def analyze(req: AnalyzeRequest):
             "soukaku": gogaku.get("五格").get("総格").get("値"),
             "summary": None,
         },
-        "summary": analysis_summary,
+        "summary": prompt_summary,
     }
 
     # Persist to DB if possible
