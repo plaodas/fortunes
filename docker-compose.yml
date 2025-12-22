@@ -11,15 +11,20 @@ services:
       - db_data:/var/lib/postgresql/data
 
   litellm:
-    build: ./docker/litellm
+    build: ./litellm
     container_name: fortunes_litellm
     tty: true
+    env_file:
+      - litellm/env_all.env
     ports:
       - "8080:8080"
     volumes:
       - ./prompts:/app/prompts:rw
+      # Mount your Google service account JSON here (read-only)
+      - ./secrets/google-service-account.json:/secrets/google-service-account.json:ro
     environment:
       - TZ=UTC
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-service-account.json
 
   backend:
     build: ./backend

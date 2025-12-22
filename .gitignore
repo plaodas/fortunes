@@ -92,6 +92,7 @@ Thumbs.db
 desktop.ini
 .vs/
 *.code-workspace
+*.env
 .env
 .env.local
 .env.*.local
@@ -103,4 +104,8 @@ queries/
 .ruff_cache/
 vendor/
 logs/
+
+# Ignore host-mounted secrets directory
+secrets/
+secrets/*.json
 
