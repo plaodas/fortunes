@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Modal from '../components/Modal'
+import LoadingOverlay from '../components/LoadingOverlay'
 import FiveElementChart from '../components/FiveElementChart'
 import FiveGridRadarChart from '../components/FiveGridRadarChart'
 import MeishikiCards from '../components/MeishikiCards'
@@ -65,6 +66,7 @@ export default function Home(): JSX.Element {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [history, setHistory] = useState<AnalysisOut[]>([])
   const [selected, setSelected] = useState<AnalysisOut | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
 
   const isFormValid = !nameSeiError && !nameMeiError && !dateError && name_sei.trim().length > 0 && name_mei.trim().length > 0
 
@@ -116,15 +118,29 @@ export default function Home(): JSX.Element {
       return
     }
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour) }),
-    })
+    setLoading(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour) }),
+      })
 
-    const body = await res.json()
-    setResult(body.result)
-    fetchHistory()
+      if (!res.ok) {
+        const text = await res.text()
+        console.warn('analyze failed', text)
+        throw new Error(text || 'request failed')
+      }
+
+      const body = await res.json()
+      setResult(body.result)
+      await fetchHistory()
+    } catch (err) {
+      console.warn('analyze error', err)
+      alert('鑑定中にエラーが発生しました。後でもう一度お試しください。')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function fetchHistory() {
@@ -159,6 +175,7 @@ export default function Home(): JSX.Element {
 
   return (
     <main className="container">
+      {loading && <LoadingOverlay />}
       <div className="hero card">
         <h1 className="title">Fortunes</h1>
         <p className="muted" style={{ marginTop: 8 }}>四柱推命と姓名判断から生来の運命を読み解くアプリ</p>
@@ -221,7 +238,7 @@ export default function Home(): JSX.Element {
               </select>
             </div>
             <div className="form-action" style={{ alignSelf: 'end' }}>
-              <button className="btn" type="submit" disabled={!isFormValid}>鑑定する</button>
+              <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定する</button>
             </div>
           </div>
         </form>

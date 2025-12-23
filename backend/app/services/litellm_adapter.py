@@ -133,7 +133,9 @@ def _generate(**llm_param) -> str:
         response = _call_llm(provider, model, temperature, num_retries, messages)
         text = _extract_text_from_response(response)
         _persist_response_to_db(response, provider, model, text)
+
         return text
+
     except litellm.AuthenticationError as e:
         logger.error("llm AuthenticationError: %s", e)
         raise
@@ -148,7 +150,7 @@ def _generate(**llm_param) -> str:
         raise
 
 
-def make_analysis_detail(system_prompt: str, user_prompt: str) -> dict:
+def make_analysis_detail(system_prompt: str, user_prompt: str) -> str:
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
     return _generate(
         provider="vertex_ai",
@@ -161,7 +163,7 @@ def make_analysis_detail(system_prompt: str, user_prompt: str) -> dict:
     )
 
 
-def make_analysis_summary(system_prompt: str, user_prompt: str) -> dict:
+def make_analysis_summary(system_prompt: str, user_prompt: str) -> str:
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
     return _generate(
         provider="vertex_ai",
