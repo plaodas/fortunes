@@ -1,7 +1,5 @@
 import json
 import logging
-
-# import os
 from datetime import datetime
 from typing import List
 
@@ -32,6 +30,11 @@ from sqlalchemy.orm import Session
 get_db_dependency = Depends(db.get_db)
 
 logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)
+if not logger.hasHandlers():
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
 
 app = FastAPI(title="Fortunes API")
 
@@ -69,12 +72,16 @@ def analyze(req: AnalyzeRequest):
     # 四柱推命 ー 総合鑑定
     birth_analysis = synthesize_reading(meishiki, gogyo_balance)
 
+    logger.debug("🌟Finished birth analysis...")
+
     # 姓名判断 ー 五格取得
     # 名前の各漢字の画数をDBから取得
     with db.SessionLocal() as session:
         # nameの各文字について画数を取得
         strokes_sei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_sei if ch.strip()]
         strokes_mei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_mei if ch.strip()]
+
+    logger.debug("🌟Finished name analysis...")
 
     gogaku = get_gogaku(strokes_sei, strokes_mei)
     """
@@ -92,20 +99,22 @@ def analyze(req: AnalyzeRequest):
     prompts_detail_user = render_life_analysis(ctx, TEMPLATE_DETAIL_USER)
     prompts_summary_user = render_life_analysis(ctx, TEMPLATE_SUMMARY_USER)
 
+    logger.debug(f"🌟Start make reports {prompts_detail_user[:60]}...")
+
     try:
-        response = litellm_adapter.make_analysis_detail(
+        report_detail = litellm_adapter.make_analysis_detail(
             system_prompt=TEMPLATE_DETAIL_SYSTEM,
             user_prompt=prompts_detail_user,
         )
         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-        report_detail = response.choices[0].message.content
+        logger.debug(f"🌟Received detail response: {report_detail[:60]}...")
 
-        response = litellm_adapter.make_analysis_summary(
+        report_summary = litellm_adapter.make_analysis_summary(
             system_prompt=TEMPLATE_SUMMARY_SYSTEM,
             user_prompt=prompts_summary_user,
         )
         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-        report_summary = response.choices[0].message.content
+        logger.debug(f"🌟Received summary response: {report_summary[:60]}...")
 
     except Exception:
         return {"error": "しばらく経ってから再度お試しください。"}
@@ -118,7 +127,7 @@ def analyze(req: AnalyzeRequest):
                 "month": meishiki.get("月柱"),
                 "day": meishiki.get("日柱"),
                 "hour": meishiki.get("時柱"),
-                "summary": birth_analysis.get("summary"),
+                "summary": "",
             },
             "gogyo": {
                 "wood": gogyo_balance.get("木", 0),
@@ -127,7 +136,7 @@ def analyze(req: AnalyzeRequest):
                 "metal": gogyo_balance.get("金", 0),
                 "water": gogyo_balance.get("水", 0),
             },
-            "summary": report_detail,
+            "summary": "",
         },
         "name_analysis": {
             "tenkaku": gogaku.get("五格").get("天格").get("値"),
@@ -137,6 +146,7 @@ def analyze(req: AnalyzeRequest):
             "soukaku": gogaku.get("五格").get("総格").get("値"),
             "summary": None,
         },
+        "detail": report_detail,
         "summary": report_summary,
     }
 
@@ -149,6 +159,7 @@ def analyze(req: AnalyzeRequest):
             result_birth=result["birth_analysis"],
             result_name=result["name_analysis"],
             summary=result["summary"],
+            detail=result["detail"],
         )
         with db.SessionLocal() as session:
             session.add(db_obj)
@@ -175,6 +186,7 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
                 result_name=(json.loads(a.result_name) if isinstance(a.result_name, str) else a.result_name),
                 result_birth=(json.loads(a.result_birth) if isinstance(a.result_birth, str) else a.result_birth),
                 summary=a.summary,
+                detail=a.detail,
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
         )

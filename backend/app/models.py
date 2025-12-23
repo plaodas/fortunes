@@ -14,6 +14,7 @@ class Analysis(Base):
     result_birth = Column(JSON, nullable=False)
     result_name = Column(JSON, nullable=False)
     summary = Column(Text, nullable=True)
+    detail = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
 
@@ -26,3 +27,19 @@ class Kanji(Base):
     strokes_min = Column(Integer, nullable=True)
     strokes_max = Column(Integer, nullable=True)
     source = Column(Text, nullable=True)
+
+
+class LLMResponse(Base):
+    __tablename__ = "llm_responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    request_id = Column(Text, nullable=True)
+    provider = Column(Text, nullable=True)
+    model = Column(Text, nullable=True)
+    model_version = Column(Text, nullable=True)
+    response_id = Column(Text, nullable=True)
+    prompt_hash = Column(Text, nullable=True)
+    response_text = Column(Text, nullable=True)
+    usage = Column(JSON, nullable=True)
+    raw = Column(JSON, nullable=True)  # TODO: 生データのマスク処理を追加する
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
