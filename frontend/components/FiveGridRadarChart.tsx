@@ -63,16 +63,16 @@ export default function FiveGridRadarChart({ analysis, height = 200 }: Props) {
   const options = {
     responsive: true,
     plugins: {
-      legend: {display: false as const},
-      tooltip: {enabled: true},
+      legend: { display: false as const },
+      tooltip: { enabled: true },
     },
     scales: {
       r: {
-        // 五格の最大値を総格の最大値80 に設定（必要に応じて調整）
+        // 五格の最大値は大吉：5、最小値は大凶：0 とする
         suggestedMin: 0,
-        suggestedMax: 80,
+        suggestedMax: 5,
         ticks: {
-          stepSize: 20,
+          stepSize: 1,
           showLabelBackdrop: false,
         },
         pointLabels: {
