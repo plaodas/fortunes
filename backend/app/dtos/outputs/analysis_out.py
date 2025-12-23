@@ -9,4 +9,5 @@ class AnalysisOut(BaseModel):
     result_birth: dict
     result_name: dict
     summary: str
+    detail: str
     created_at: str | None = None

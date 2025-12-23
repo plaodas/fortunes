@@ -1,91 +1,174 @@
-"""Simple adapter showing how to switch LLM providers per request.
-
-This is a lightweight example. It attempts to call provider SDKs if installed;
-otherwise it raises a helpful error. For local development you can enable
-`DEBUG_LITELLM_FAKE_RESP=1` in the environment to get a canned response.
-
-Supported providers: "openai", "gemini", "deepseek" (placeholders).
-"""
-
 from __future__ import annotations
 
 import logging
 import os
 
+import litellm
+from litellm import completion
+
 logger = logging.getLogger(__name__)
-
-DEBUG_FAKE = os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
-
-
-def something(client):
-    pass
-
-
-def _fake_response(model: str, prompt: str) -> str:
-    return f"[FAKE RESP] model={model} prompt_preview={prompt[:80]}"
+logger.setLevel(logging.DEBUG)
+if not logger.hasHandlers():
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
 
 
-def generate(provider: str, model: str, prompt: str, **kwargs) -> str:
-    """Generate text using selected provider.
+def _is_debug_fake() -> bool:
+    """Return True when runtime env requests a fake response (checked at call time).
 
-    Returns the generated text (string). Raises RuntimeError with a helpful
-    message when required SDKs or keys are missing.
+    This allows tests to set `os.environ['DEBUG_LITELLM_FAKE_RESP'] = '1'`
+    dynamically without needing to reload the module.
     """
-    if DEBUG_FAKE:
-        logger.info("DEBUG mode: returning fake response")
-        return _fake_response(model, prompt)
+    return os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
 
-    provider = (provider or "").lower()
-    if provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY not set in environment")
+
+def _fake_response(model: str, messages: list[dict[str, str]]) -> str:
+    message = f"system_prompt_preview={messages[0]['content'][:80]} user_prompt_preview={messages[1]['content'][:80]}"
+    logger.info("DEBUG mode: returning fake response")
+    return f"[FAKE RESP] model={model} {message}"
+
+
+def _call_llm(provider: str, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> object | str:
+    """Call the provider (or return fake response). Returns raw response or string for fake."""
+    if _is_debug_fake():
+        return _fake_response(model=model, messages=messages)
+
+    return completion(
+        model=model,
+        temperature=temperature,
+        num_retries=num_retries,
+        messages=messages,
+    )
+
+
+def _extract_text_from_response(response_obj: object | str) -> str:
+    """Extract textual content from various response shapes. Return text or raise."""
+    # if fake path returns a string already
+    if isinstance(response_obj, str):
+        return response_obj
+
+    # common OpenAI-like location
+    try:
+        return response_obj.choices[0].message.content
+    except Exception:
+        logger.debug("Could not extract from response. Trying raw parsing...")
+
+    # try to parse raw/dict forms
+    raw = None
+    try:
+        raw = getattr(response_obj, "raw", None) or (response_obj.to_dict() if hasattr(response_obj, "to_dict") else None)
+    except Exception:
+        raw = None
+
+    if isinstance(raw, dict):
+        candidates = raw.get("candidates") or raw.get("choices")
+        if candidates and isinstance(candidates, list) and len(candidates) > 0:
+            part = candidates[0].get("content") or candidates[0].get("message")
+            if isinstance(part, dict):
+                parts = part.get("parts")
+                if parts and isinstance(parts, list):
+                    maybe = parts[0].get("text")
+                    if maybe:
+                        return maybe
+
+    raise RuntimeError("Could not extract text from LLM response")
+
+
+def _persist_response_to_db(response_obj: object | str, provider: str, model: str, text: str) -> None:
+    """Best-effort: persist LLM response to DB, but do not raise on failure."""
+    try:
+        from app import db, models
+
+        raw_obj = None
         try:
-            import openai
+            raw_obj = getattr(response_obj, "raw", None) or (response_obj.to_dict() if hasattr(response_obj, "to_dict") else None)
+        except Exception:
+            raw_obj = None
 
-            openai.api_key = api_key
-            # simple ChatCompletion call; adapt as needed
-            resp = openai.ChatCompletion.create(
+        model_version = None
+        response_id = None
+        usage_obj = None
+        if isinstance(raw_obj, dict):
+            model_version = raw_obj.get("modelVersion") or raw_obj.get("model_version")
+            response_id = raw_obj.get("responseId") or raw_obj.get("id")
+            usage_obj = raw_obj.get("usageMetadata") or raw_obj.get("usage")
+
+        with db.SessionLocal() as session:
+            rec = models.LLMResponse(
+                request_id=None,
+                provider=provider,
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=512,
+                model_version=model_version,
+                response_id=response_id,
+                prompt_hash=None,
+                response_text=text,
+                usage=usage_obj,
+                raw=raw_obj,
             )
-            return resp.choices[0].message.content
-        except ImportError as e:
-            raise RuntimeError("openai package not installed; pip install openai") from e
+            session.add(rec)
+            session.commit()
+    except Exception as e:
+        logger.warning("Could not persist LLM response: %s", e)
 
-    if provider in ("gemini", "google"):
-        # Placeholder for calling Google Vertex AI / Gemini. Users should
-        # install google-cloud-aiplatform and then call the appropriate client.
-        try:
-            from google.cloud import aiplatform  # type: ignore
 
-            # The exact call varies by SDK version and model type; here's a sketch
-            client = aiplatform.gapic.PredictionServiceClient()
-            # TODO: fill project/location/endpoint and call predict() accordingly
-            something(client)
+def _generate(**llm_param) -> str:
+    """Generic LLM call wrapper for litellm.
 
-            raise NotImplementedError("Gemini/Vertex AI call not implemented in sample adapter")
-        except ImportError as e:
-            raise RuntimeError("google-cloud-aiplatform not installed; see docs to install and configure") from e
+    args:
+        llm_param: dict with keys:
+        - provider: str
+        - model: str
+        - temperature: float (optional)
+        - num_retries: int (optional)
+        - messages: list[dict[str, str]]
+    """
+    provider: str = llm_param["provider"]
+    model: str = llm_param["model"]
+    temperature: float = llm_param.get("temperature", 0.8)
+    num_retries: int = llm_param.get("num_retries", 3)
+    messages: list[dict[str, str]] = llm_param["messages"]
 
-    if provider == "deepseek":
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-        if not api_key:
-            raise RuntimeError("DEEPSEEK_API_KEY not set in environment")
-        try:
-            import requests
+    try:
+        response = _call_llm(provider, model, temperature, num_retries, messages)
+        text = _extract_text_from_response(response)
+        _persist_response_to_db(response, provider, model, text)
+        return text
+    except litellm.AuthenticationError as e:
+        logger.error("llm AuthenticationError: %s", e)
+        raise
+    except litellm.RateLimitError as e:
+        logger.error("llm RateLimitError: %s", e)
+        raise
+    except litellm.APIError as e:
+        logger.error("llm APIError: %s", e)
+        raise
+    except Exception as e:
+        logger.error("llm error: %s", e)
+        raise
 
-            # NOTE: replace URL with DeepSeek's actual API endpoint and payload
-            url = "https://api.deepseek.example/v1/generate"
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            payload = {"model": model, "prompt": prompt}
-            r = requests.post(url, json=payload, headers=headers, timeout=30)
-            r.raise_for_status()
-            data = r.json()
-            # adjust according to real response shape
-            return data.get("text") or data.get("output") or str(data)
-        except ImportError as e:
-            raise RuntimeError("requests package not available; pip install requests") from e
 
-    raise RuntimeError(f"Unsupported provider: {provider}")
+def make_analysis_detail(system_prompt: str, user_prompt: str) -> dict:
+    os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
+    return _generate(
+        provider="vertex_ai",
+        # model="gemini/gemini-2.5-pro",
+        model="gemini/gemini-2.5-flash",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+
+
+def make_analysis_summary(system_prompt: str, user_prompt: str) -> dict:
+    os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
+    return _generate(
+        provider="vertex_ai",
+        model="gemini/gemini-2.5-flash-lite",
+        temperature=0.7,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )

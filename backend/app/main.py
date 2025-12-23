@@ -1,7 +1,5 @@
 import json
 import logging
-
-# import os
 from datetime import datetime
 from typing import List
 
@@ -16,20 +14,27 @@ from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from app.services.calc_name_analysis import get_gogaku, get_kanji
 from app.services.make_story import render_life_analysis
-from app.services.prompts.template_life_analysis import TEMPLATE
-from app.services.prompts.template_life_analysis_summary import TEMPLATE_SUMMARY
+from app.services.prompts.template_life_analysis import (
+    TEMPLATE_DETAIL_SYSTEM,
+    TEMPLATE_DETAIL_USER,
+)
+from app.services.prompts.template_life_analysis_summary import (
+    TEMPLATE_SUMMARY_SYSTEM,
+    TEMPLATE_SUMMARY_USER,
+)
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
-# import litellm
-# from litellm import completion
 
 # Use a module-level Depends wrapper to satisfy ruff B008
 get_db_dependency = Depends(db.get_db)
 
 logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)
+if not logger.hasHandlers():
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
 
 app = FastAPI(title="Fortunes API")
 
@@ -45,26 +50,6 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-class LLMRequest(BaseModel):
-    provider: str
-    model: str
-    prompt: str
-
-
-@app.post("/llm")
-def llm(req: LLMRequest):
-    """Generate text from the selected provider/model for a single request.
-
-    This endpoint demonstrates per-request provider switching. The environment
-    should contain the API keys (see docs/docker/litellm/env_all.env).
-    """
-    try:
-        out = litellm_adapter.generate(req.provider, req.model, req.prompt)
-    except Exception as e:
-        return {"error": str(e)}
-    return {"provider": req.provider, "model": req.model, "response": out}
 
 
 @app.post("/analyze")
@@ -87,12 +72,16 @@ def analyze(req: AnalyzeRequest):
     # 四柱推命 ー 総合鑑定
     birth_analysis = synthesize_reading(meishiki, gogyo_balance)
 
+    logger.debug("🌟Finished birth analysis...")
+
     # 姓名判断 ー 五格取得
     # 名前の各漢字の画数をDBから取得
     with db.SessionLocal() as session:
         # nameの各文字について画数を取得
         strokes_sei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_sei if ch.strip()]
         strokes_mei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_mei if ch.strip()]
+
+    logger.debug("🌟Finished name analysis...")
 
     gogaku = get_gogaku(strokes_sei, strokes_mei)
     """
@@ -105,53 +94,30 @@ def analyze(req: AnalyzeRequest):
     }}
     """
 
-    # 四柱推命と姓名判断の結果から LLMに解析を依頼
+    # 四柱推命と姓名判断の結果から LLM解析依頼用のプロンプトを生成
     ctx: dict = birth_analysis | gogaku
-    prompt_detail = render_life_analysis(ctx, TEMPLATE)
-    prompt_summary = render_life_analysis(ctx, TEMPLATE_SUMMARY)
+    prompts_detail_user = render_life_analysis(ctx, TEMPLATE_DETAIL_USER)
+    prompts_summary_user = render_life_analysis(ctx, TEMPLATE_SUMMARY_USER)
 
-    # TODO: Tracking costs per provider/model
-    # DEBUG_FAKE = os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
+    logger.debug(f"🌟Start make reports {prompts_detail_user[:60]}...")
 
-    # if DEBUG_FAKE:
-    #     analysis_detail = "[FAKE RESP] Detailed analysis response"
-    #     analysis_summary = "[FAKE RESP] Summary analysis response"
-    # else:
-    #     try:
-    #         response = completion(
-    #             model="gemini/gemini-1.5-pro",
-    #             messages=[{"role": "user", "content": prompt_detail}],
-    #             temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
-    #             num_retries=3,  # エラーが出たら3回まで自動で再試行する
-    #         )
-    #         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-    #         analysis_detail = response.choices[0].message.content
+    try:
+        report_detail = litellm_adapter.make_analysis_detail(
+            system_prompt=TEMPLATE_DETAIL_SYSTEM,
+            user_prompt=prompts_detail_user,
+        )
+        # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
+        logger.debug(f"🌟Received detail response: {report_detail[:60]}...")
 
-    #         response = completion(
-    #             # model="gpt-4o-mini",
-    #             model="gemini/gemini-1.5-flash",
-    #             messages=[{"role": "user", "content": prompt_summary}],
-    #             temperature=0.7,  # 創造性を少し高めるために0.7程度に設定
-    #             num_retries=3,  # エラーが出たら3回まで自動で再試行する
-    #         )
-    #         # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-    #         analysis_summary = response.choices[0].message.content
+        report_summary = litellm_adapter.make_analysis_summary(
+            system_prompt=TEMPLATE_SUMMARY_SYSTEM,
+            user_prompt=prompts_summary_user,
+        )
+        # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
+        logger.debug(f"🌟Received summary response: {report_summary[:60]}...")
 
-    #     except litellm.AuthenticationError as e:
-    #         # Thrown when the API key is invalid
-    #         print(f"Authentication failed: {e}")
-    #         return {"error": "LLMが利用できません。しばらく経ってから再度お試しください。"}
-    #     except litellm.RateLimitError as e:
-    #         # Thrown when you've exceeded your rate limit
-    #         print(f"Rate limited: {e}")
-    #         return {"error": "LLM利用上限に達しました。しばらく経ってから再度お試しください。"}
-    #     except litellm.APIError as e:
-    #         # Thrown for general API errors
-    #         print(f"API error: {e}")
-    #         return {"error": "しばらく経ってから再度お試しください。"}
-    #     except Exception as e:
-    #         print(f"LLM response: {e}")
-    #         return {"error": "しばらく経ってから再度お試しください。"}
+    except Exception:
+        return {"error": "しばらく経ってから再度お試しください。"}
 
     # Return the dummy result structure specified in the prompt
     result = {
@@ -161,7 +127,7 @@ def analyze(req: AnalyzeRequest):
                 "month": meishiki.get("月柱"),
                 "day": meishiki.get("日柱"),
                 "hour": meishiki.get("時柱"),
-                "summary": birth_analysis.get("summary"),
+                "summary": "",
             },
             "gogyo": {
                 "wood": gogyo_balance.get("木", 0),
@@ -170,7 +136,7 @@ def analyze(req: AnalyzeRequest):
                 "metal": gogyo_balance.get("金", 0),
                 "water": gogyo_balance.get("水", 0),
             },
-            "summary": prompt_detail,
+            "summary": "",
         },
         "name_analysis": {
             "tenkaku": gogaku.get("五格").get("天格").get("値"),
@@ -180,7 +146,8 @@ def analyze(req: AnalyzeRequest):
             "soukaku": gogaku.get("五格").get("総格").get("値"),
             "summary": None,
         },
-        "summary": prompt_summary,
+        "detail": report_detail,
+        "summary": report_summary,
     }
 
     # Persist to DB if possible
@@ -192,6 +159,7 @@ def analyze(req: AnalyzeRequest):
             result_birth=result["birth_analysis"],
             result_name=result["name_analysis"],
             summary=result["summary"],
+            detail=result["detail"],
         )
         with db.SessionLocal() as session:
             session.add(db_obj)
@@ -218,6 +186,7 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
                 result_name=(json.loads(a.result_name) if isinstance(a.result_name, str) else a.result_name),
                 result_birth=(json.loads(a.result_birth) if isinstance(a.result_birth, str) else a.result_birth),
                 summary=a.summary,
+                detail=a.detail,
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
         )

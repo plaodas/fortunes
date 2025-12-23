@@ -16,7 +16,6 @@ AI駆動開発の練習用です。認証、厳密なバリデーション、ロ
 コンテナは以下のような構成です
 - frontend: node, react, next
 - backend: python, fastapi
-- litellm: litellm
 - db: poatgresql
 
 ```mermaid

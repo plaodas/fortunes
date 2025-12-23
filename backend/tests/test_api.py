@@ -1,18 +1,20 @@
+import pytest
 from app import db as db_module
 from app import models
 from app.main import app
-from fastapi.testclient import TestClient
-
-client = TestClient(app)
+from httpx import ASGITransport, AsyncClient
 
 
-def test_health():
-    r = client.get("/health")
+@pytest.mark.anyio
+async def test_health():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        r = await ac.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
 
 
-def test_post_analyze():
+@pytest.mark.anyio
+async def test_post_analyze():
     # Mock the DB session used inside the endpoint to avoid touching a real DB
     class FakeWriteSession:
         def __enter__(self):
@@ -39,7 +41,8 @@ def test_post_analyze():
     try:
         db_module.SessionLocal = lambda: FakeWriteSession()
         payload = {"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12}
-        r = client.post("/analyze", json=payload)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            r = await ac.post("/analyze", json=payload)
         assert r.status_code == 200
         body = r.json()
         assert "result" in body
@@ -93,36 +96,42 @@ class FakeSession:
         pass
 
 
-def test_get_analyses_empty():
+@pytest.mark.anyio
+async def test_get_analyses_empty():
     def fake_get_db():
         yield FakeSession(query_result=[])
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
-    r = client.get("/analyses")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        r = await ac.get("/analyses")
     assert r.status_code == 200
     assert r.json() == []
     app.dependency_overrides.clear()
 
 
-def test_delete_analysis_not_found():
+@pytest.mark.anyio
+async def test_delete_analysis_not_found():
     def fake_get_db():
         yield FakeSession(query_result=None)
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
-    r = client.delete("/analyses/123")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        r = await ac.delete("/analyses/123")
     assert r.status_code == 200
     assert r.json() == {"status": "not found"}
     app.dependency_overrides.clear()
 
 
-def test_delete_analysis_deleted():
+@pytest.mark.anyio
+async def test_delete_analysis_deleted():
     fake_obj = type("O", (), {"id": 1})
 
     def fake_get_db():
         yield FakeSession(query_result=fake_obj)
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
-    r = client.delete("/analyses/1")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        r = await ac.delete("/analyses/1")
     assert r.status_code == 200
     assert r.json() == {"status": "deleted"}
     app.dependency_overrides.clear()

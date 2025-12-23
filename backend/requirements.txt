@@ -6,8 +6,11 @@ pydantic==2.12.5
 sqlalchemy==2.0.45
 psycopg2-binary==2.9.6
 pytest==7.4.0
-httpx==0.24.1
+# httpx pin was causing conflicts between litellm and google-genai.
+# Allow a compatible range required by google-genai (>=0.28.1).
+httpx>=0.28.1,<1.0
 
 # Template rendering
 Jinja2==3.1.2
 litellm==1.80.11
+google-genai==1.56.0

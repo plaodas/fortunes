@@ -3,6 +3,7 @@ import Modal from '../components/Modal'
 import FiveElementChart from '../components/FiveElementChart'
 import FiveGridRadarChart from '../components/FiveGridRadarChart'
 import MeishikiCards from '../components/MeishikiCards'
+import TextWithBr from '../components/TextWithBr'
 
 type Meishiki = {
   year?: string
@@ -37,7 +38,8 @@ type NameAnalysis = {
 type AnalysisResult = {
   birth_analysis?: BirthAnalysis
   name_analysis?: NameAnalysis
-  summary?: string
+  summary: string
+  detail: string
 }
 
 type AnalysisOut = {
@@ -48,6 +50,7 @@ type AnalysisOut = {
   result_birth: BirthAnalysis
   result_name: NameAnalysis
   summary: string
+  detail: string
   created_at: string
 }
 
@@ -239,6 +242,9 @@ export default function Home(): JSX.Element {
             <div className="chart">
               <FiveGridRadarChart analysis={result.name_analysis} />
             </div>
+            <div className="detail" style={{ marginTop: 50 }}>
+              <TextWithBr text={result.detail} />
+            </div>
             {/* <div className="result-pre">{JSON.stringify(result, null, 2)}</div> */}
           </div>
         </section>
@@ -274,9 +280,9 @@ export default function Home(): JSX.Element {
                     <strong>{h.name}</strong>
                     <div className="muted">{h.birth_date} · {h.birth_hour}時生まれ</div>
                   </div>
-                  {/* <div className="muted">#{h.id}</div> */}
                 </div>
-                <div className="summary">{h.summary}</div>
+                <div className="summary">
+                  <TextWithBr text={h.summary} /></div>
               </div>
             ))}
           </div>
@@ -297,10 +303,9 @@ export default function Home(): JSX.Element {
           <div className="chart">
             <FiveGridRadarChart analysis={selected.result_name} />
           </div>
-          {/* <div style={{ marginTop: 50 }}>
-            <h4 className="font-semibold">詳細 JSON</h4>
-            <pre className="result-pre">{JSON.stringify(selected, null, 2)}</pre>
-          </div> */}
+          <div className="detail" style={{ marginTop: 50 }}>
+            <TextWithBr text={selected.detail} />
+          </div>
         </Modal>
       )}
     </main>
