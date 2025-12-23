@@ -11,8 +11,7 @@ def test_make_analysis_summary() -> dict:
     # litellm._turn_on_debug() # comment in to enable litellm debug mode
 
     system_prompt = TEMPLATE_SUMMARY_SYSTEM
-    user_prompt = """わたしの人生の“今のテーマ”を200文字以内でまとめてください。
-
+    user_prompt = """わたしの人生のテーマを150文字以内でまとめてください。
 ========================
 【四柱推命：命式の要点】
 年柱：乙卯（家系・幼少期・ルーツに影響。家族の価値観や幼少期の性質を示す。）
@@ -33,16 +32,18 @@ def test_make_analysis_summary() -> dict:
 総格：風向きが乱れ、足元に注意が必要な時期。
 ========================
 """
+
     result: dict = make_analysis_summary(system_prompt, user_prompt)
     print(result)
     expect_result = """[FAKE RESP] model=gemini/gemini-2.5-flash-lite system_prompt_preview=
 あなたは「人生という桃源郷を巡る旅」の案内人です。
 四柱推命・五行バランス・姓名判断の情報をもとに、
-読み手の人生の“今のテーマ”を200文字以内でまとめてく user_prompt_preview=わたしの人生の“今のテーマ”を200文字以内でまとめてください。
-
+読み手の人生のテーマを150文字以内でまとめてください。 user_prompt_preview=わたしの人生のテーマを150文字以内でまとめてください。
 ========================
 【四柱推命：命式の要点】
-年柱：乙卯（家系"""
+年柱：乙卯（家系・幼少期・"""
+    print(expect_result)
+
     assert result == expect_result
 
 
@@ -116,4 +117,6 @@ def test_make_analysis_detail() -> dict:
 【四柱推命：命式】
 年柱：乙卯
 　- 領域："""
+    print(expect_result)
+
     assert result == expect_result
