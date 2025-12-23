@@ -8,11 +8,9 @@ AI駆動開発の練習用です。認証、厳密なバリデーション、ロ
 
 ### 画面イメージ
 
-<img src="images/preview1.png" height="400">
-<img src="images/preview2.png" height="400">
-<img src="images/preview4.png" height="400">
-<img src="images/preview5.png" height="400">
+<img src="images/preview1.png" height="400"><img src="images/preview2.png" height="400"><img src="images/preview4.png" height="400"><img src="images/preview5.png" height="400">
 
+<img src="images/preview6.png" height="400"><img src="images/preview7.png" height="400">
 
 # 構成
 コンテナは以下のような構成です
