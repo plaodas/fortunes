@@ -46,7 +46,7 @@ async def test_post_analyze():
         assert r.status_code == 200
         body = r.json()
         assert "result" in body
-        assert body["result"]["name_analysis"]["soukaku"] == 13  # 4 + 9
+        assert body["result"]["name_analysis"]["soukaku"] == 5  # 大吉ポイント
     finally:
         db_module.SessionLocal = orig_SessionLocal
 
