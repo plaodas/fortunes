@@ -1,91 +1,81 @@
-"""Simple adapter showing how to switch LLM providers per request.
-
-This is a lightweight example. It attempts to call provider SDKs if installed;
-otherwise it raises a helpful error. For local development you can enable
-`DEBUG_LITELLM_FAKE_RESP=1` in the environment to get a canned response.
-
-Supported providers: "openai", "gemini", "deepseek" (placeholders).
-"""
+# TODO: Tracking costs per provider/model
 
 from __future__ import annotations
 
 import logging
 import os
 
+import litellm
+from litellm import completion
+
 logger = logging.getLogger(__name__)
 
-DEBUG_FAKE = os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
 
+def _is_debug_fake() -> bool:
+    """Return True when runtime env requests a fake response (checked at call time).
 
-def something(client):
-    pass
-
-
-def _fake_response(model: str, prompt: str) -> str:
-    return f"[FAKE RESP] model={model} prompt_preview={prompt[:80]}"
-
-
-def generate(provider: str, model: str, prompt: str, **kwargs) -> str:
-    """Generate text using selected provider.
-
-    Returns the generated text (string). Raises RuntimeError with a helpful
-    message when required SDKs or keys are missing.
+    This allows tests to set `os.environ['DEBUG_LITELLM_FAKE_RESP'] = '1'`
+    dynamically without needing to reload the module.
     """
-    if DEBUG_FAKE:
-        logger.info("DEBUG mode: returning fake response")
-        return _fake_response(model, prompt)
+    return os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
 
-    provider = (provider or "").lower()
-    if provider == "openai":
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY not set in environment")
-        try:
-            import openai
 
-            openai.api_key = api_key
-            # simple ChatCompletion call; adapt as needed
-            resp = openai.ChatCompletion.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=512,
-            )
-            return resp.choices[0].message.content
-        except ImportError as e:
-            raise RuntimeError("openai package not installed; pip install openai") from e
+def _fake_response(model: str, messages: list[dict[str, str]]) -> str:
+    message = f"system_prompt_preview={messages[0]['content'][:80]} user_prompt_preview={messages[1]['content'][:80]}"
+    logger.info("DEBUG mode: returning fake response")
+    return f"[FAKE RESP] model={model} {message}"
 
-    if provider in ("gemini", "google"):
-        # Placeholder for calling Google Vertex AI / Gemini. Users should
-        # install google-cloud-aiplatform and then call the appropriate client.
-        try:
-            from google.cloud import aiplatform  # type: ignore
 
-            # The exact call varies by SDK version and model type; here's a sketch
-            client = aiplatform.gapic.PredictionServiceClient()
-            # TODO: fill project/location/endpoint and call predict() accordingly
-            something(client)
+def _generate(**llm_param) -> str:
+    model: str = llm_param["model"]
+    temperature: float = llm_param.get("temperature", 0.8)  # 創造性を少し高めるために0.8程度に設定
+    num_retries: int = llm_param.get("num_retries", 3)  # エラーが出たら3回まで自動で再試行する
+    messages: list[dict[str, str]] = llm_param["messages"]
 
-            raise NotImplementedError("Gemini/Vertex AI call not implemented in sample adapter")
-        except ImportError as e:
-            raise RuntimeError("google-cloud-aiplatform not installed; see docs to install and configure") from e
+    # If tests or runtime requested a fake response, check at call-time
+    if _is_debug_fake():
+        return _fake_response(model=model, messages=messages)
 
-    if provider == "deepseek":
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-        if not api_key:
-            raise RuntimeError("DEEPSEEK_API_KEY not set in environment")
-        try:
-            import requests
+    try:
+        response = completion(
+            model=model,
+            temperature=temperature,
+            num_retries=num_retries,
+            messages=messages,
+        )
+        return response.choices[0].message.content
+    except litellm.AuthenticationError as e:
+        # Thrown when the API key is invalid
+        logger.error(f"llm AuthenticationError: {str(e)}")
+    except litellm.RateLimitError as e:
+        # Thrown when you've exceeded your rate limit
+        logger.error(f"llm RateLimitError: {str(e)}")
+    except litellm.APIError as e:
+        # Thrown for general API errors
+        logger.error(f"llm APIError: {str(e)}")
+    except Exception as e:
+        logger.error(f"llm error: {str(e)}")
+        raise e
 
-            # NOTE: replace URL with DeepSeek's actual API endpoint and payload
-            url = "https://api.deepseek.example/v1/generate"
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            payload = {"model": model, "prompt": prompt}
-            r = requests.post(url, json=payload, headers=headers, timeout=30)
-            r.raise_for_status()
-            data = r.json()
-            # adjust according to real response shape
-            return data.get("text") or data.get("output") or str(data)
-        except ImportError as e:
-            raise RuntimeError("requests package not available; pip install requests") from e
 
-    raise RuntimeError(f"Unsupported provider: {provider}")
+def make_analysis_detail(system_prompt: str, user_prompt: str) -> dict:
+    os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
+    return _generate(
+        model="gemini/gemini-2.5-pro",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+
+
+def make_analysis_summary(system_prompt: str, user_prompt: str) -> dict:
+    os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
+    return _generate(
+        model="gemini/gemini-1.5-pro",
+        temperature=0.7,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
