@@ -1,15 +1,17 @@
 # 🌟四柱推命と姓名判断から人生のブループリントを読み解くアプリ (MVP)
 
 # 概要
-四柱推命と姓名判断からあなたの人生のブループリントを読み解くアプリです。
-「名前」、「生まれた年月日時」を入力すると命式、五行、五格が計算されて大まかな人生の流れが表示されます。
+四柱推命と姓名判断からあなたの人生のブループリントを物語風に読み解くアプリです。
+「名前」、「生まれた年月日時」を入力すると命式、五行、五格が計算されて大まかな人生の流れが桃源郷の旅路を模した物語で表現されます。
 算出は一般的なものを更に簡略化しています。
 AI駆動開発の練習用です。認証、厳密なバリデーション、ログ監視などは未実装です。
 
 ### 画面イメージ
 
-<img src="images/sample_1.png" height="400">
-<img src="images/sample_2.png" height="400">
+<img src="images/preview1.png" height="400">
+<img src="images/preview2.png" height="400">
+<img src="images/preview4.png" height="400">
+<img src="images/preview5.png" height="400">
 
 
 # 構成
@@ -68,12 +70,10 @@ flowchart TD
 
 ## 設定方法
 
-### Google サービスアカウント 設定
-```bash
-mkdir -p ./secrets
-cp /path/to/your-google-service-account.json ./secrets/google-service-account.json
-chmod 400 ./secrets/google-service-account.json
-```
+### APIキー 設定
+1. [Google AI Studio](https://aistudio.google.com/)でAPI keyを取得してください。
+2. REPOルートの`.env.sample`を`.env`にファイル名変更
+3. `GEMINI_API_KEY=`に `1.` で取得したキーをコピーして貼り付けます
 
 ### コンテナ起動、マイグレーション
 ```bash
@@ -82,16 +82,29 @@ docker compose up --build -d
 
 # DBのマイグレーション
 PYTHONPATH=./backend python backend/manage_migrate.py # テーブル作成
-psql "$DATABASE_URL" -f backend/migrations/kanji_data.dump.sql # "$DATABASE_URL"はご自身の環境に合わせて修正してください
-
-# frontend: http://localhost:3000
-# backend: http://localhost:8000
-
+# "$DATABASE_URL"はご自身の環境に合わせて修正してください
+psql "$DATABASE_URL" -f backend/migrations/kanji_data.dump.sql # 漢字データ
 
 ```
+### ブラウザアクセス
+
+`http://localhost:3000`
+で画面が表示されます
+
+### LLMのモデル
+
+鑑定文作成とサマリ作成で使用するモデルを分けています。
+- 鑑定文作成： gemini-2.5-flash
+- サマリ作成： gemini-2.5-flash-lite
+
+鑑定文は表現力が必要なので、`gemini-2.5-pro`やOpenAIの`GPT-4o`のようなモデルがおすすめです。この環境では無料枠があるgemini-2.5-flashを使用しています。
+サマリ作成は表現力が問われないので、`gemini-2.5-flash-lite`のような軽くて安価なモデルがよいです。
+
+プロンプトも[鑑定文](backend/app/services/prompts/template_life_analysis.py)と[サマリ](backend/app/services/prompts/template_life_analysis_summary.py)で分けています
+
 
 ### 開発環境用ツールのインストール
-- リンター、コードフォーマッター
+- リンター、コードフォーマッターを使用しています
 ```
 pip install -r dev-requirements.txt
 ```
@@ -103,7 +116,5 @@ pip install -r dev-requirements.txt
 - ファイル：backend/migrations/ucs-strokes.txt,v
 - 漢字画数インポート方法
   `PYTHONPATH=./backend python backend/import_kanji.py`
-
-
 
 
