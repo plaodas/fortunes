@@ -1,4 +1,4 @@
-// コンポーネント例
+// 改行をBRに変換するコンポーネント
 import React from "react";
 
 export default function TextWithBr({ text }: { text: string }) {

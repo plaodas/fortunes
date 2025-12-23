@@ -1,5 +1,5 @@
 from app import models
-from app.services.constants import KAKUSUU_FORTUNE, TOUGEN_FORTUNE
+from app.services.constants import FORTUNE_POINT, KAKUSUU_FORTUNE, TOUGEN_FORTUNE
 from sqlalchemy.orm import Session
 
 
@@ -44,6 +44,7 @@ def get_gogaku(sei: list[tuple[str, int]], mei: list[tuple[str, int]]) -> dict[s
         return {
             "値": value,
             "吉凶": KAKUSUU_FORTUNE.get(value),
+            "吉凶ポイント": FORTUNE_POINT.get(KAKUSUU_FORTUNE.get(value)),
             "桃源": {
                 "短文": TOUGEN_FORTUNE.get(KAKUSUU_FORTUNE.get(value)).get("短文") if KAKUSUU_FORTUNE.get(value) else "",
                 "長文": TOUGEN_FORTUNE.get(KAKUSUU_FORTUNE.get(value)).get("長文") if KAKUSUU_FORTUNE.get(value) else "",
