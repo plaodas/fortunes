@@ -25,7 +25,7 @@ type Props = {
   height?: number
 }
 
-export default function FiveElementChart({ analysis, height = 200 }: Props) {
+export default function FiveElementChart({ analysis, height = 300, width = 300 }: Props) {
   // analysis は { wood: 3, fire: 2, earth: 1, metal: 2, water: 0 } のようなオブジェクト
   if (!analysis) return null
 
@@ -49,6 +49,8 @@ export default function FiveElementChart({ analysis, height = 200 }: Props) {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    width: width,
+    height: height,
     scales: {
       x: { grid: { display: false }, ticks: { color: '#475569' } },
       y: { beginAtZero: true, grid: { color: '#eef2ff' }, ticks: { stepSize: 1, color: '#475569' } },

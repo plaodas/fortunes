@@ -34,7 +34,7 @@ type Props = {
   height?: number
 }
 
-export default function FiveGridRadarChart({ analysis, height = 200 }: Props) {
+export default function FiveGridRadarChart({ analysis, height = 300 }: Props) {
   if (!analysis) return null
 
   const data = {
