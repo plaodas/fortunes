@@ -115,7 +115,8 @@ pip install -r dev-requirements.txt
 
 ### TEST
 テストコマンド
-.env の `DEBUG_LITELLM_FAKE_RESP` を DEBUG_LITELLM_FAKE_RESP=1としてlitellmの呼び出しをパスします
+
+テスト内で `DEBUG_LITELLM_FAKE_RESP=1`としてlitellmの呼び出しをパスします
 ```bash
 docker compose exec frontend npm test -- --coverage --coverageDirectory=coverage --coverageReporters=text
 docker compose exec backend bash -c "PYTHONPATH=/app pytest"
