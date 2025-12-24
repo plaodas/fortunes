@@ -108,10 +108,24 @@ psql "$DATABASE_URL" -f backend/migrations/kanji_data.dump.sql # 漢字データ
 
 ### 開発環境用ツールのインストール
 - リンター、コードフォーマッターを使用しています
+
 ```
 pip install -r dev-requirements.txt
 ```
 
+### TEST
+テストコマンド
+.env の `DEBUG_LITELLM_FAKE_RESP` を DEBUG_LITELLM_FAKE_RESP=1としてlitellmの呼び出しをパスします
+```bash
+docker compose exec frontend npm test -- --coverage --coverageDirectory=coverage --coverageReporters=text
+docker compose exec backend bash -c "PYTHONPATH=/app pytest"
+```
+
+### debug
+uvicornとsqlalchemyのdebugを有効化
+```bash
+docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
+```
 
 ## 漢字の画数DBについて
 漢字の画数は[漢字画数データベース](https://kanji-database.sourceforge.net/database/strokes.html)からダウンロードさせていただきました。

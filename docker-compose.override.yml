@@ -4,4 +4,4 @@ services:
       - ./backend:/app:delegated
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
     environment:
-      DEBUG: "1"
+      SQLALCHEMY_ECHO: "1" # Enable SQL query logging

@@ -7,11 +7,6 @@ import litellm
 from litellm import completion
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-if not logger.hasHandlers():
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    logger.addHandler(ch)
 
 
 def _is_debug_fake() -> bool:
@@ -52,7 +47,7 @@ def _extract_text_from_response(response_obj: object | str) -> str:
     try:
         return response_obj.choices[0].message.content
     except Exception:
-        logger.debug("Could not extract from response. Trying raw parsing...")
+        logger.warning("Could not extract from response. Trying raw parsing...")
 
     # try to parse raw/dict forms
     raw = None

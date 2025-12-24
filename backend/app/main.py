@@ -30,11 +30,6 @@ from sqlalchemy.orm import Session
 get_db_dependency = Depends(db.get_db)
 
 logger = logging.getLogger("uvicorn")
-logger.setLevel(logging.DEBUG)
-if not logger.hasHandlers():
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    logger.addHandler(ch)
 
 app = FastAPI(title="Fortunes API")
 
