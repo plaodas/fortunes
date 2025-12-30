@@ -128,11 +128,27 @@ uvicornとsqlalchemyのdebugを有効化
 docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
 ```
 
+
+### ジョブのキュー管理 Arq
+```bash
+$ docker compose exec backend bash -lc "PYTHONPATH=/app  python -m app.worker"
+
+07:57:07: Starting worker for 1 functions: app.tasks.process_analysis
+07:57:07: redis_version=7.4.7 mem_usage=1.01M clients_connected=1 db_keys=0
+
+
+$ curl -X POST http://localhost:8000/analyze/enqueue \
+  -H "Content-Type: application/json" \
+  -d '{"name_sei":"太","name_mei":"郎","birth_date":"1990-01-01","birth_hour":12}'
+```
+
+
+
+
 ## 漢字の画数DBについて
 漢字の画数は[漢字画数データベース](https://kanji-database.sourceforge.net/database/strokes.html)からダウンロードさせていただきました。
 
 - ファイル：backend/migrations/ucs-strokes.txt,v
 - 漢字画数インポート方法
   `PYTHONPATH=./backend python backend/import_kanji.py`
-
 

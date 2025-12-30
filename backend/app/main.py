@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import os
 from datetime import datetime
 from typing import List
 
@@ -23,9 +24,11 @@ from app.services.prompts.template_life_analysis_summary import (
     TEMPLATE_SUMMARY_SYSTEM,
     TEMPLATE_SUMMARY_USER,
 )
-from fastapi import Depends, FastAPI
+from arq import create_pool as arq_create_pool
+from arq.connections import RedisSettings as ArqRedisSettings
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Use a module-level Depends wrapper to satisfy ruff B008
@@ -46,7 +49,52 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
+    """Health check endpoint.
+    軽量な Liveness
+    Returns 200 OK with status "ok".
+    """
     return {"status": "ok"}
+
+
+@app.get("/ready")
+async def ready():
+    """Readiness probe: check DB and Redis connectivity.
+    依存サービスの確認用
+    Returns 200 when both are reachable, otherwise 503 with details.
+    """
+    checks: dict = {"db": False, "redis": False}
+    details: dict = {}
+
+    # Check Postgres via async engine
+    try:
+        async with db.engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["db"] = True
+    except Exception as e:
+        details["db_error"] = str(e)
+
+    # Check Redis via aioredis (use ARQ_REDIS_URL if present)
+    try:
+        # import here to keep module import lightweight if aioredis absent
+        import aioredis
+
+        redis_url = os.getenv("ARQ_REDIS_URL", "redis://redis:6379")
+        r = aioredis.from_url(redis_url)
+        try:
+            pong = await r.ping()
+            if pong:
+                checks["redis"] = True
+        finally:
+            await r.close()
+            # aioredis v2 uses wait_closed
+            if hasattr(r, "wait_closed"):
+                await r.wait_closed()
+    except Exception as e:
+        details["redis_error"] = str(e)
+
+    if all(checks.values()):
+        return {"status": "ready"}
+    raise HTTPException(status_code=503, detail={"status": "not ready", "checks": checks, "details": details})
 
 
 @app.post("/analyze")
@@ -187,6 +235,23 @@ async def analyze(req: AnalyzeRequest, db_sess: AsyncSession = get_db_dependency
         logger.warning("Could not persist analysis to DB: %s", e)
 
     return {"input": req.model_dump(), "result": result}
+
+
+@app.post("/analyze/enqueue")
+async def analyze_enqueue(req: AnalyzeRequest):
+    """Enqueue an analysis job via Arq and return the job id."""
+    pool = await arq_create_pool(ArqRedisSettings(host="redis"))
+    try:
+        job = await pool.enqueue_job(
+            "app.tasks.process_analysis",
+            req.name_sei,
+            req.name_mei,
+            req.birth_date,
+            int(req.birth_hour),
+        )
+        return {"job_id": job.job_id}
+    finally:
+        await pool.close()
 
 
 @app.get("/analyses", response_model=List[AnalysisOut])
