@@ -120,21 +120,71 @@ export default function Home(): JSX.Element {
 
     setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze`, {
+      // Enqueue job
+      const enqueueRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze/enqueue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour) }),
       })
 
-      if (!res.ok) {
-        const text = await res.text()
-        console.warn('analyze failed', text)
-        throw new Error(text || 'request failed')
+      if (!enqueueRes.ok) {
+        const text = await enqueueRes.text()
+        console.warn('enqueue failed', text)
+        throw new Error(text || 'enqueue failed')
       }
 
-      const body = await res.json()
-      setResult(body.result)
-      await fetchHistory()
+      const { job_id } = await enqueueRes.json()
+      // poll job status until complete (or timeout)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const timeoutMs = 300_000 // 5 minutes
+      const start = Date.now()
+      let finalResult: any = null
+
+      while (Date.now() - start < timeoutMs) {
+        await new Promise((r) => setTimeout(r, 1000))
+        try {
+          const st = await fetch(`${apiBase}/jobs/${job_id}`)
+          if (!st.ok) {
+            // continue polling on transient errors
+            continue
+          }
+          const body = await st.json()
+          // status may be like "JobStatus.complete" or "complete"
+          const status = String(body.status)
+          if (status.includes('complete')) {
+            finalResult = body.result
+            console.log('job complete', finalResult)
+            break
+          }
+        } catch (e) {
+          // ignore and continue polling
+        }
+      }
+
+      // finalResultが空のオブジェクトだった場合もエラー扱いとする
+      if (finalResult === null || (typeof finalResult === 'object' && Object.keys(finalResult).length === 0)) {
+        alert('鑑定中にエラーが発生しました。後でもう一度お試しください。')
+      } else {
+        // refresh history and select + show the new record if available
+        const arr = await fetchHistory()
+        if (finalResult && finalResult.id && arr) {
+          const id = Number(finalResult.id)
+          const found = arr.find((h) => h.id === id)
+          if (found) {
+            // setSelected(found)
+            setResult({
+              birth_analysis: {
+                meishiki: found.result_birth?.meishiki,
+                gogyo: found.result_birth?.gogyo,
+                summary: found.summary,
+              },
+              name_analysis: found.result_name,
+              summary: found.summary || '',
+              detail: found.detail || '',
+            })
+          }
+        }
+      }
     } catch (err) {
       console.warn('analyze error', err)
       alert('鑑定中にエラーが発生しました。後でもう一度お試しください。')
@@ -143,16 +193,18 @@ export default function Home(): JSX.Element {
     }
   }
 
-  async function fetchHistory() {
+  async function fetchHistory(): Promise<AnalysisOut[] | null> {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyses`)
       if (res.ok) {
         const arr: AnalysisOut[] = await res.json()
         setHistory(arr)
+        return arr
       }
     } catch (e) {
       // ignore
     }
+    return null
   }
 
   async function deleteAnalysis(id: number) {

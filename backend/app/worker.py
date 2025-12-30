@@ -12,7 +12,7 @@ def main():
     arq_cmd = shutil.which("arq") or "arq"
     env = dict(**__import__("os").environ)
     # Set ARQ_REDIS_URL so arq CLI connects to the compose redis service
-    env["ARQ_REDIS_URL"] = env.get("ARQ_REDIS_URL", "redis://redis:6379")
+    env["ARQ_REDIS_URL"] = env.get("ARQ_REDIS_URL")
     # point the CLI to the settings class which registers functions
     args = [arq_cmd, "app.worker_settings.WorkerSettings"]
     return subprocess.call(args, env=env)
