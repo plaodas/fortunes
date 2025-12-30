@@ -1,12 +1,14 @@
 import os
 
 import litellm
+import pytest
 from app.services.litellm_adapter import make_analysis_summary
 from app.services.prompts.template_life_analysis import TEMPLATE_DETAIL_SYSTEM
 from app.services.prompts.template_life_analysis_summary import TEMPLATE_SUMMARY_SYSTEM
 
 
-def test_make_analysis_summary() -> dict:
+@pytest.mark.anyio
+async def test_make_analysis_summary() -> dict:
     os.environ["DEBUG_LITELLM_FAKE_RESP"] = "1"  # Enable fake response for testing
     # litellm._turn_on_debug() # comment in to enable litellm debug mode
 
@@ -33,7 +35,7 @@ def test_make_analysis_summary() -> dict:
 ========================
 """
 
-    result: dict = make_analysis_summary(system_prompt, user_prompt)
+    result: dict = await make_analysis_summary(system_prompt, user_prompt)
     print(result)
     expect_result = """[FAKE RESP] model=gemini/gemini-2.5-flash-lite system_prompt_preview=
 あなたは「人生という桃源郷を巡る旅」の案内人です。
@@ -47,7 +49,8 @@ def test_make_analysis_summary() -> dict:
     assert result == expect_result
 
 
-def test_make_analysis_detail() -> dict:
+@pytest.mark.anyio
+async def test_make_analysis_detail() -> dict:
     os.environ["DEBUG_LITELLM_FAKE_RESP"] = "1"  # Enable fake response for testing
     litellm._turn_on_debug()  # comment in to enable litellm debug mode
 
@@ -105,7 +108,7 @@ def test_make_analysis_detail() -> dict:
 
 ========================
 """
-    result: dict = make_analysis_summary(system_prompt, user_prompt)
+    result: dict = await make_analysis_summary(system_prompt, user_prompt)
     print(result)
     expect_result = """[FAKE RESP] model=gemini/gemini-2.5-flash-lite system_prompt_preview=
 あなたは人生という広大な桃源郷を巡る旅の案内人です。

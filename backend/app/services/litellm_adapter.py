@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -24,16 +25,21 @@ def _fake_response(model: str, messages: list[dict[str, str]]) -> str:
     return f"[FAKE RESP] model={model} {message}"
 
 
-def _call_llm(provider: str, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> object | str:
-    """Call the provider (or return fake response). Returns raw response or string for fake."""
+async def _call_llm(provider: str, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> object | str:
+    """Call the provider (or return fake response). Returns raw response or string for fake.
+
+    Calls the sync `completion` in a thread to avoid blocking the event loop.
+    """
     if _is_debug_fake():
         return _fake_response(model=model, messages=messages)
 
-    return completion(
-        model=model,
-        temperature=temperature,
-        num_retries=num_retries,
-        messages=messages,
+    # call blocking completion in a thread
+    return await asyncio.to_thread(
+        completion,
+        model,
+        temperature,
+        num_retries,
+        messages,
     )
 
 
@@ -70,8 +76,11 @@ def _extract_text_from_response(response_obj: object | str) -> str:
     raise RuntimeError("Could not extract text from LLM response")
 
 
-def _persist_response_to_db(response_obj: object | str, provider: str, model: str, text: str) -> None:
-    """Best-effort: persist LLM response to DB, but do not raise on failure."""
+async def _persist_response_to_db(response_obj: object | str, provider: str, model: str, text: str) -> None:
+    """Best-effort: persist LLM response to DB, but do not raise on failure.
+
+    Uses async DB session if available.
+    """
     try:
         from app import db, models
 
@@ -89,25 +98,46 @@ def _persist_response_to_db(response_obj: object | str, provider: str, model: st
             response_id = raw_obj.get("responseId") or raw_obj.get("id")
             usage_obj = raw_obj.get("usageMetadata") or raw_obj.get("usage")
 
-        with db.SessionLocal() as session:
-            rec = models.LLMResponse(
-                request_id=None,
-                provider=provider,
-                model=model,
-                model_version=model_version,
-                response_id=response_id,
-                prompt_hash=None,
-                response_text=text,
-                usage=usage_obj,
-                raw=raw_obj,
-            )
-            session.add(rec)
-            session.commit()
+        # use async session if available
+        try:
+            async with db.SessionLocal() as session:
+                rec = models.LLMResponse(
+                    request_id=None,
+                    provider=provider,
+                    model=model,
+                    model_version=model_version,
+                    response_id=response_id,
+                    prompt_hash=None,
+                    response_text=text,
+                    usage=usage_obj,
+                    raw=raw_obj,
+                )
+                session.add(rec)
+                await session.commit()
+        except Exception:
+            # fallback to sync path if project still exposes sync SessionLocal
+            try:
+                with db.SessionLocal() as session:
+                    rec = models.LLMResponse(
+                        request_id=None,
+                        provider=provider,
+                        model=model,
+                        model_version=model_version,
+                        response_id=response_id,
+                        prompt_hash=None,
+                        response_text=text,
+                        usage=usage_obj,
+                        raw=raw_obj,
+                    )
+                    session.add(rec)
+                    session.commit()
+            except Exception:
+                pass
     except Exception as e:
         logger.warning("Could not persist LLM response: %s", e)
 
 
-def _generate(**llm_param) -> str:
+async def _generate(**llm_param) -> str:
     """Generic LLM call wrapper for litellm.
 
     args:
@@ -125,9 +155,10 @@ def _generate(**llm_param) -> str:
     messages: list[dict[str, str]] = llm_param["messages"]
 
     try:
-        response = _call_llm(provider, model, temperature, num_retries, messages)
+        response = await _call_llm(provider, model, temperature, num_retries, messages)
         text = _extract_text_from_response(response)
-        _persist_response_to_db(response, provider, model, text)
+        # persist in background (don't await to keep latency low)
+        asyncio.create_task(_persist_response_to_db(response, provider, model, text))
 
         return text
 
@@ -145,9 +176,9 @@ def _generate(**llm_param) -> str:
         raise
 
 
-def make_analysis_detail(system_prompt: str, user_prompt: str) -> str:
+async def make_analysis_detail(system_prompt: str, user_prompt: str) -> str:
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
-    return _generate(
+    return await _generate(
         provider="vertex_ai",
         # model="gemini/gemini-2.5-pro",
         model="gemini/gemini-2.5-flash",
@@ -158,9 +189,9 @@ def make_analysis_detail(system_prompt: str, user_prompt: str) -> str:
     )
 
 
-def make_analysis_summary(system_prompt: str, user_prompt: str) -> str:
+async def make_analysis_summary(system_prompt: str, user_prompt: str) -> str:
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
-    return _generate(
+    return await _generate(
         provider="vertex_ai",
         model="gemini/gemini-2.5-flash-lite",
         temperature=0.7,

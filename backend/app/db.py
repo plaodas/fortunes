@@ -1,27 +1,25 @@
 import os
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
 
 # Default to PostgreSQL for this project. If an env var is provided it will be
-# used; also normalize legacy `postgres://` scheme to the SQLAlchemy
-# `postgresql+psycopg2://` form so both Docker and local URLs work.
-
-default = "postgresql+psycopg2://postgres:password@localhost:5432/fortunes"
+# used. For async SQLAlchemy we use the `asyncpg` driver (postgresql+asyncpg).
+default = "postgresql+asyncpg://postgres:password@localhost:5432/fortunes"
 DATABASE_URL = os.getenv("DATABASE_URL", default)
 
-# Normalize common postgres scheme
+# Normalize common postgres schemes to asyncpg form so both Docker and local URLs work.
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif "psycopg2" in DATABASE_URL and "asyncpg" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("psycopg2", "asyncpg")
 
-engine = create_engine(DATABASE_URL, future=True, pool_pre_ping=True, echo=(os.getenv("SQLALCHEMY_ECHO") == "1"))
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+# Async engine and sessionmaker
+engine = create_async_engine(DATABASE_URL, future=True, echo=(os.getenv("SQLALCHEMY_ECHO") == "1"))
+SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    async with SessionLocal() as session:
+        yield session

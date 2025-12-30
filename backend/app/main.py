@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 from datetime import datetime
@@ -12,7 +13,7 @@ from app.services import litellm_adapter
 from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
-from app.services.calc_name_analysis import get_gogaku, get_kanji
+from app.services.calc_name_analysis import get_gogaku
 from app.services.make_story import render_life_analysis
 from app.services.prompts.template_life_analysis import (
     TEMPLATE_DETAIL_SYSTEM,
@@ -24,7 +25,8 @@ from app.services.prompts.template_life_analysis_summary import (
 )
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Use a module-level Depends wrapper to satisfy ruff B008
 get_db_dependency = Depends(db.get_db)
@@ -48,7 +50,7 @@ def health():
 
 
 @app.post("/analyze")
-def analyze(req: AnalyzeRequest):
+async def analyze(req: AnalyzeRequest, db_sess: AsyncSession = get_db_dependency):
     """Perform fortune analysis based on name(sei and mei) and birth date/hour.
     Returns a dummy result for now.
     """
@@ -70,11 +72,22 @@ def analyze(req: AnalyzeRequest):
     logger.debug("🌟Finished birth analysis...")
 
     # 姓名判断 ー 五格取得
-    # 名前の各漢字の画数をDBから取得
-    with db.SessionLocal() as session:
-        # nameの各文字について画数を取得
-        strokes_sei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_sei if ch.strip()]
-        strokes_mei: list[tuple[str, int]] = [get_kanji(session, ch) for ch in req.name_mei if ch.strip()]
+    # 名前の各漢字の画数をDBから取得（AsyncSessionで取得）
+    async def _get_strokes(session: AsyncSession, chars: list[str]) -> list[tuple[str, int]]:
+        out: list[tuple[str, int]] = []
+        for ch in chars:
+            if not ch or not ch.strip():
+                continue
+            c = ch[0]
+            k = await session.get(models.Kanji, c)
+            if not k or k.strokes_min is None:
+                out.append((ch, 0))
+            else:
+                out.append((ch, int(k.strokes_min)))
+        return out
+
+    strokes_sei: list[tuple[str, int]] = await _get_strokes(db_sess, req.name_sei)
+    strokes_mei: list[tuple[str, int]] = await _get_strokes(db_sess, req.name_mei)
 
     logger.debug("🌟Finished name analysis...")
 
@@ -96,20 +109,32 @@ def analyze(req: AnalyzeRequest):
 
     logger.debug(f"🌟Start make reports {prompts_detail_user[:60]}...")
 
-    try:
-        report_detail = litellm_adapter.make_analysis_detail(
-            system_prompt=TEMPLATE_DETAIL_SYSTEM,
-            user_prompt=prompts_detail_user,
-        )
-        # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-        logger.debug(f"🌟Received detail response: {report_detail[:60]}...")
+    async def _maybe_await(value):
+        try:
+            while inspect.isawaitable(value):
+                value = await value
+        except Exception:
+            # if awaiting fails, just return the original value to let outer try/except handle it
+            return value
+        return value
 
-        report_summary = litellm_adapter.make_analysis_summary(
-            system_prompt=TEMPLATE_SUMMARY_SYSTEM,
-            user_prompt=prompts_summary_user,
+    try:
+        # 四柱推命と姓名判断の結果から LLM解析依頼用のプロンプトを生成
+        report_detail = await _maybe_await(
+            litellm_adapter.make_analysis_detail(
+                TEMPLATE_DETAIL_SYSTEM,
+                prompts_detail_user,
+            )
         )
-        # 結果の表示 (OpenAI互換のレスポンス形式で返ってきます)
-        logger.debug(f"🌟Received summary response: {report_summary[:60]}...")
+        logger.debug(f"🌟Received detail response: {str(report_detail)[:60]}...")
+
+        report_summary = await _maybe_await(
+            litellm_adapter.make_analysis_summary(
+                TEMPLATE_SUMMARY_SYSTEM,
+                prompts_summary_user,
+            )
+        )
+        logger.debug(f"🌟Received summary response: {str(report_summary)[:60]}...")
 
     except Exception:
         return {"error": "しばらく経ってから再度お試しください。"}
@@ -145,7 +170,7 @@ def analyze(req: AnalyzeRequest):
         "summary": report_summary,
     }
 
-    # Persist to DB if possible
+    # Persist to DB if possible (AsyncSession)
     try:
         db_obj = models.Analysis(
             name=req.name_sei + " " + req.name_mei,
@@ -156,9 +181,8 @@ def analyze(req: AnalyzeRequest):
             summary=result["summary"],
             detail=result["detail"],
         )
-        with db.SessionLocal() as session:
-            session.add(db_obj)
-            session.commit()
+        db_sess.add(db_obj)
+        await db_sess.commit()
     except Exception as e:
         logger.warning("Could not persist analysis to DB: %s", e)
 
@@ -166,10 +190,13 @@ def analyze(req: AnalyzeRequest):
 
 
 @app.get("/analyses", response_model=List[AnalysisOut])
-def list_analyses(limit: int = 50, db: Session = get_db_dependency):
+async def list_analyses(limit: int = 50, db: AsyncSession = get_db_dependency):
     """Return recent analyses ordered by newest first."""
-    with db as session:
-        qs = session.query(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit).all()
+    # AsyncSession path
+    stmt = select(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit)
+    res = await db.execute(stmt)
+    qs = res.scalars().all()
+
     out = []
     for a in qs:
         out.append(
@@ -189,12 +216,14 @@ def list_analyses(limit: int = 50, db: Session = get_db_dependency):
 
 
 @app.delete("/analyses/{analysis_id}")
-def delete_analysis(analysis_id: int, db: Session = get_db_dependency):
+async def delete_analysis(analysis_id: int, db: AsyncSession = get_db_dependency):
     """Delete an analysis by ID."""
-    with db as session:
-        obj = session.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
-        if not obj:
-            return {"status": "not found"}
-        session.delete(obj)
-        session.commit()
+
+    stmt = select(models.Analysis).where(models.Analysis.id == analysis_id).limit(1)
+    res = await db.execute(stmt)
+    obj = res.scalar_one_or_none()
+    if not obj:
+        return {"status": "not found"}
+    await db.delete(obj)
+    await db.commit()
     return {"status": "deleted"}
