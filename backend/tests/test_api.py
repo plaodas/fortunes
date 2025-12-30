@@ -1,3 +1,5 @@
+from typing import AsyncGenerator
+
 import pytest
 from app import db as db_module
 from app import models
@@ -16,20 +18,14 @@ async def test_health():
 @pytest.mark.anyio
 async def test_post_analyze():
     # Mock the DB session used inside the endpoint to avoid touching a real DB
-    class FakeWriteSession:
-        def __enter__(self):
+    class FakeAsyncWriteSession:
+        async def __aenter__(self) -> "FakeAsyncWriteSession":
             return self
 
-        def __exit__(self, exc_type, exc, tb):
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
             return False
 
-        def add(self, obj):
-            self.added = obj
-
-        def commit(self):
-            self.committed = True
-
-        def get(self, model: models.Kanji, key: str):
+        async def get(self, model: models.Kanji, key: str) -> models.Kanji | None:
             if key == "太":
                 return model(char="太", strokes_min=4)
             elif key == "郎":
@@ -37,9 +33,21 @@ async def test_post_analyze():
             else:
                 return None
 
-    orig_SessionLocal = db_module.SessionLocal
+        def add(self, obj) -> None:
+            self.added = obj
+
+        async def commit(self) -> None:
+            self.committed = True
+
+    async def fake_get_db() -> AsyncGenerator[FakeAsyncWriteSession, None]:
+        sess = FakeAsyncWriteSession()
+        try:
+            yield sess
+        finally:
+            pass
+
+    app.dependency_overrides[db_module.get_db] = fake_get_db
     try:
-        db_module.SessionLocal = lambda: FakeWriteSession()
         payload = {"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12}
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             r = await ac.post("/analyze", json=payload)
@@ -48,7 +56,7 @@ async def test_post_analyze():
         assert "result" in body
         assert body["result"]["name_analysis"]["soukaku"] == 5  # 大吉ポイント
     finally:
-        db_module.SessionLocal = orig_SessionLocal
+        app.dependency_overrides.clear()
 
 
 class FakeQuery:

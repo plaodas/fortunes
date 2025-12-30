@@ -12,7 +12,7 @@ from app import db
 from sqlalchemy import Connection
 
 
-def _run_migration(conn: Connection, file_name: str):
+def _run_migration(conn: Connection, file_name: str) -> None:
     migrations_file = os.path.join(os.path.dirname(__file__), "backend", "migrations", file_name)
     # support running both from repo root and from backend folder
     if not os.path.exists(migrations_file):
@@ -28,7 +28,7 @@ def _run_migration(conn: Connection, file_name: str):
     conn.exec_driver_sql(sql)
 
 
-def run_migrations(files: list[str] = None):
+def run_migrations(files: list[str]) -> None:
     try:
         with db.engine.begin() as conn:
             for file_name in files:

@@ -59,7 +59,7 @@ def parse_line(line: str):
     }
 
 
-def import_file(path: str, source_label: str = None):
+def import_file(path: str, source_label: str | None = None) -> None:
     print(f"Importing from {path}...")
     inserted = 0
     with open(path, "r", encoding="utf-8", errors="ignore") as f:

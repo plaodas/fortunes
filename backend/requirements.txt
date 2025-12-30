@@ -5,6 +5,7 @@ pydantic==2.12.5
 # Pin SQLAlchemy to a 2.0.x release compatible with the environment
 sqlalchemy==2.0.45
 psycopg2-binary==2.9.6
+asyncpg==0.31.0
 pytest==7.4.0
 # httpx pin was causing conflicts between litellm and google-genai.
 # Allow a compatible range required by google-genai (>=0.28.1).

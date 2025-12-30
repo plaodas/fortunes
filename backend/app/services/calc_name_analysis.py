@@ -3,7 +3,7 @@ from app.services.constants import FORTUNE_POINT, KAKUSUU_FORTUNE, TOUGEN_FORTUN
 from sqlalchemy.orm import Session
 
 
-def get_kanji(session: Session, char: str) -> tuple[str, int]:
+def get_kanji(session: Session, char: str) -> tuple[str, int] | None:
     """Return kanji stroke info for a single character.
     Args:
         session: SQLAlchemy Session object
