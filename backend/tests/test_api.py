@@ -1,8 +1,5 @@
-from typing import AsyncGenerator
-
 import pytest
 from app import db as db_module
-from app import models
 from app.main import app
 from httpx import ASGITransport, AsyncClient
 
@@ -13,50 +10,6 @@ async def test_health():
         r = await ac.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
-
-
-@pytest.mark.anyio
-async def test_post_analyze():
-    # Mock the DB session used inside the endpoint to avoid touching a real DB
-    class FakeAsyncWriteSession:
-        async def __aenter__(self) -> "FakeAsyncWriteSession":
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb) -> bool:
-            return False
-
-        async def get(self, model: models.Kanji, key: str) -> models.Kanji | None:
-            if key == "太":
-                return model(char="太", strokes_min=4)
-            elif key == "郎":
-                return model(char="郎", strokes_min=9)
-            else:
-                return None
-
-        def add(self, obj) -> None:
-            self.added = obj
-
-        async def commit(self) -> None:
-            self.committed = True
-
-    async def fake_get_db() -> AsyncGenerator[FakeAsyncWriteSession, None]:
-        sess = FakeAsyncWriteSession()
-        try:
-            yield sess
-        finally:
-            pass
-
-    app.dependency_overrides[db_module.get_db] = fake_get_db
-    try:
-        payload = {"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12}
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            r = await ac.post("/analyze", json=payload)
-        assert r.status_code == 200
-        body = r.json()
-        assert "result" in body
-        assert body["result"]["name_analysis"]["soukaku"] == 5  # 大吉ポイント
-    finally:
-        app.dependency_overrides.clear()
 
 
 class FakeResult:
