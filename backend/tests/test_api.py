@@ -59,55 +59,52 @@ async def test_post_analyze():
         app.dependency_overrides.clear()
 
 
-class FakeQuery:
-    def __init__(self, result=None):
-        self._result = result
+class FakeResult:
+    def __init__(self, rows: list | None = None):
+        # rows: None | single object | list/tuple of objects
+        self._rows = rows
 
-    def order_by(self, *args, **kwargs):
-        return self
+    def scalars(self) -> object:
+        class S:
+            def __init__(self, rows):
+                self._rows = rows
 
-    def limit(self, n):
-        return self
+            def all(self) -> list:
+                if self._rows is None:
+                    return []
+                return list(self._rows) if isinstance(self._rows, (list, tuple)) else [self._rows]
 
-    def all(self):
-        return self._result or []
+        return S(self._rows)
 
-    def filter(self, *args, **kwargs):
-        return self
+    def scalar_one_or_none(self) -> object | None:
+        if self._rows is None:
+            return None
+        if isinstance(self._rows, (list, tuple)):
+            return self._rows[0] if self._rows else None
+        return self._rows
 
-    def first(self):
-        return self._result
 
-
-class FakeSession:
+class FakeAsyncSession:
     def __init__(self, query_result=None):
         self._query_result = query_result
         self.deleted = False
         self.committed = False
 
-    def __enter__(self):
-        return self
+    async def execute(self, stmt):
+        return FakeResult(self._query_result or [])
 
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def query(self, *args, **kwargs):
-        return FakeQuery(self._query_result)
-
-    def delete(self, obj):
+    async def delete(self, obj):
         self.deleted = True
 
-    def commit(self):
+    async def commit(self):
         self.committed = True
-
-    def add(self, obj):
-        pass
 
 
 @pytest.mark.anyio
 async def test_get_analyses_empty():
-    def fake_get_db():
-        yield FakeSession(query_result=[])
+    # dependency override
+    async def fake_get_db():
+        yield FakeAsyncSession(query_result=[])
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -119,8 +116,8 @@ async def test_get_analyses_empty():
 
 @pytest.mark.anyio
 async def test_delete_analysis_not_found():
-    def fake_get_db():
-        yield FakeSession(query_result=None)
+    async def fake_get_db():
+        yield FakeAsyncSession(query_result=None)
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -134,8 +131,9 @@ async def test_delete_analysis_not_found():
 async def test_delete_analysis_deleted():
     fake_obj = type("O", (), {"id": 1})
 
-    def fake_get_db():
-        yield FakeSession(query_result=fake_obj)
+    # dependency override
+    async def fake_get_db():
+        yield FakeAsyncSession(query_result=[fake_obj])
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

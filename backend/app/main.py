@@ -192,9 +192,11 @@ async def analyze(req: AnalyzeRequest, db_sess: AsyncSession = get_db_dependency
 @app.get("/analyses", response_model=List[AnalysisOut])
 async def list_analyses(limit: int = 50, db: AsyncSession = get_db_dependency):
     """Return recent analyses ordered by newest first."""
+    # AsyncSession path
     stmt = select(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit)
     res = await db.execute(stmt)
     qs = res.scalars().all()
+
     out = []
     for a in qs:
         out.append(
@@ -216,6 +218,7 @@ async def list_analyses(limit: int = 50, db: AsyncSession = get_db_dependency):
 @app.delete("/analyses/{analysis_id}")
 async def delete_analysis(analysis_id: int, db: AsyncSession = get_db_dependency):
     """Delete an analysis by ID."""
+
     stmt = select(models.Analysis).where(models.Analysis.id == analysis_id).limit(1)
     res = await db.execute(stmt)
     obj = res.scalar_one_or_none()
