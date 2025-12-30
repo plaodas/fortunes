@@ -21,6 +21,8 @@ AI駆動開発の練習用です。
 コンテナは以下のような構成です
 - frontend: node, react, next
 - backend: python, fastapi
+- worker: python, arq
+- redis: redis
 - db: poatgresql
 
 ```mermaid
@@ -41,11 +43,16 @@ flowchart TD
       🔵LiteLLM用のプロンプト生成
       🔵鑑定結果生成
     `"]
+    worker["`worker（arq）
+      🔵ジョブキュー管理
+    `"]
+    redis["`redis
+      🔵ジョブ情報保存
+    `"]
     db["`db（postgresql）
       🔵鑑定履歴保存
     `"]
   end
-  deepseek("DeepSeek API")
   openai("OpenAI API")
   google("Google Gemini API")
   monitor("`[未実装] 監視・ログ
@@ -56,6 +63,8 @@ flowchart TD
 
   user <-->|認証は後回し| frontend
   frontend <--> backend
+  backend <--> worker
+  worker <--> redis
   backend <--> db
   backend --> monitor
   backend <--> openai
@@ -66,7 +75,7 @@ flowchart TD
   classDef wideCard stroke:#333,stroke-width:1px
   class * wideCard
   classDef dev fill:#fff,stroke:#333,stroke-width:2px,width:400px;text-align:center
-  class frontend,backend,db dev
+  class frontend,backend,worker,redis,db dev
 
 ```
 
