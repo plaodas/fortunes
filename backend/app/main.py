@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import List
+from typing import Any, List, cast
 
 from app import db, models
 from app.dtos.inputs.analyze_request import AnalyzeRequest
@@ -94,6 +94,8 @@ async def analyze_enqueue(req: AnalyzeRequest):
             req.birth_date,
             int(req.birth_hour),
         )
+        if job is None:
+            raise HTTPException(status_code=500, detail={"error": "failed to enqueue job"})
         return {"job_id": job.job_id}
     finally:
         await pool.close()
@@ -129,16 +131,18 @@ async def list_analyses(limit: int = 50, db: AsyncSession = get_db_dependency):
 
     out = []
     for a in qs:
+        result_name_val: Any = json.loads(a.result_name) if isinstance(a.result_name, str) else cast(Any, a.result_name)
+        result_birth_val: Any = json.loads(a.result_birth) if isinstance(a.result_birth, str) else cast(Any, a.result_birth)
         out.append(
             AnalysisOut(
-                id=a.id,
-                name=a.name,
+                id=cast(int, a.id),
+                name=cast(str, a.name),
                 birth_date=a.birth_date.isoformat(),
-                birth_hour=a.birth_hour,
-                result_name=(json.loads(a.result_name) if isinstance(a.result_name, str) else a.result_name),
-                result_birth=(json.loads(a.result_birth) if isinstance(a.result_birth, str) else a.result_birth),
-                summary=a.summary,
-                detail=a.detail,
+                birth_hour=cast(int, a.birth_hour),
+                result_name=cast(dict, result_name_val),
+                result_birth=cast(dict, result_birth_val),
+                summary=cast(str, a.summary),
+                detail=cast(str, a.detail),
                 created_at=a.created_at.isoformat() if a.created_at else None,
             )
         )

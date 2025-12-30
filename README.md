@@ -212,7 +212,7 @@ Runbook: 代表的問題（Redis接続切断、LLM APIキー切れ、DB接続枯
 
 
 ## その他
-### (参考)ジョブのキュー管理 Arq
+### (参考)ジョブのキュー管理 Arq backendコンテナで確認する
 ```bash
 $ docker compose exec backend bash -lc "PYTHONPATH=/app  python -m app.worker"
 

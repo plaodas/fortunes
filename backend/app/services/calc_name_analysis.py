@@ -1,6 +1,24 @@
+from typing import Optional, TypedDict
+
 from app import models
 from app.services.constants import FORTUNE_POINT, KAKUSUU_FORTUNE, TOUGEN_FORTUNE
 from sqlalchemy.orm import Session
+
+
+class TougenDict(TypedDict):
+    短文: str
+    長文: str
+
+
+class GogakuEntry(TypedDict):
+    値: int
+    吉凶: Optional[str]
+    吉凶ポイント: Optional[int]
+    桃源: TougenDict
+
+
+class GokakuDict(TypedDict):
+    五格: dict[str, GogakuEntry]
 
 
 def get_kanji(session: Session, char: str) -> tuple[str, int] | None:
@@ -22,7 +40,7 @@ def get_kanji(session: Session, char: str) -> tuple[str, int] | None:
     return char, int(k.strokes_min)
 
 
-def get_gogaku(sei: list[tuple[str, int]], mei: list[tuple[str, int]]) -> dict[str, int]:
+def get_gogaku(sei: list[tuple[str, int]], mei: list[tuple[str, int]]) -> GokakuDict:
     """Calculate the Five Grids (五格) based on the strokes of the surname (姓) and given name (名).
     Args:
         sei (list[tuple[str, int]]): List of stroke counts for surname characters
@@ -39,15 +57,25 @@ def get_gogaku(sei: list[tuple[str, int]], mei: list[tuple[str, int]]) -> dict[s
             total += strokes
         return total
 
-    def get_gogaku_dict(value: int) -> dict:
+    def get_gogaku_dict(value: int) -> GogakuEntry:
         """Get the fortune dictionary for a given stroke count value."""
+        fortune_key = KAKUSUU_FORTUNE.get(value)
+        fortune_point = FORTUNE_POINT.get(fortune_key) if fortune_key is not None else None
+        tougen = TOUGEN_FORTUNE.get(fortune_key) if fortune_key is not None else None
+        short = tougen.get("短文") if tougen is not None else ""
+        if short is None:
+            short = ""
+        long = tougen.get("長文") if tougen is not None else ""
+        if long is None:
+            long = ""
+
         return {
             "値": value,
-            "吉凶": KAKUSUU_FORTUNE.get(value),
-            "吉凶ポイント": FORTUNE_POINT.get(KAKUSUU_FORTUNE.get(value)),
+            "吉凶": fortune_key,
+            "吉凶ポイント": fortune_point,
             "桃源": {
-                "短文": TOUGEN_FORTUNE.get(KAKUSUU_FORTUNE.get(value)).get("短文") if KAKUSUU_FORTUNE.get(value) else "",
-                "長文": TOUGEN_FORTUNE.get(KAKUSUU_FORTUNE.get(value)).get("長文") if KAKUSUU_FORTUNE.get(value) else "",
+                "短文": short,
+                "長文": long,
             },
         }
 
