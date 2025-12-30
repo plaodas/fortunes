@@ -33,13 +33,14 @@ async def _call_llm(provider: str, model: str, temperature: float, num_retries: 
     if _is_debug_fake():
         return _fake_response(model=model, messages=messages)
 
-    # call blocking completion in a thread
+    # call blocking completion in a thread — use keyword args to avoid
+    # accidental positional-argument mismatches with litellm.signature
     return await asyncio.to_thread(
         completion,
-        model,
-        temperature,
-        num_retries,
-        messages,
+        model=model,
+        messages=messages,
+        temperature=temperature,
+        num_retries=num_retries,
     )
 
 

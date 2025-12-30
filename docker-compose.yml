@@ -9,6 +9,11 @@ services:
       - 5432:5432
     volumes:
       - db_data:/var/lib/postgresql/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   backend:
     build: ./backend
@@ -22,6 +27,26 @@ services:
       DATABASE_URL: postgres://postgres:password@db:5432/fortunes
     depends_on:
       - db
+      - redis
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  worker:
+    build: ./backend
+    env_file:
+      - .env
+    command: bash -c "PYTHONPATH=/app ARQ_REDIS_URL=redis://redis:6379 python -m app.worker"
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgres://postgres:password@db:5432/fortunes
+      ARQ_REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
 
   frontend:
     image: node:18
@@ -35,8 +60,27 @@ services:
     command: sh -c "npm install --silent && npm run dev"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
 volumes:
   db_data:
 
   next_build:
+
+  redis_data:
