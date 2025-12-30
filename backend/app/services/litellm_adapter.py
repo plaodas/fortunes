@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from typing import Any, cast
 
 import litellm
 from litellm import completion
@@ -25,7 +26,7 @@ def _fake_response(model: str, messages: list[dict[str, str]]) -> str:
     return f"[FAKE RESP] model={model} {message}"
 
 
-async def _call_llm(provider: str, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> object | str:
+async def _call_llm(provider: str, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> Any | str:
     """Call the provider (or return fake response). Returns raw response or string for fake.
 
     Calls the sync `completion` in a thread to avoid blocking the event loop.
@@ -44,7 +45,7 @@ async def _call_llm(provider: str, model: str, temperature: float, num_retries: 
     )
 
 
-def _extract_text_from_response(response_obj: object | str) -> str:
+def _extract_text_from_response(response_obj: Any | str) -> str:
     """Extract textual content from various response shapes. Return text or raise."""
     # if fake path returns a string already
     if isinstance(response_obj, str):
@@ -77,7 +78,7 @@ def _extract_text_from_response(response_obj: object | str) -> str:
     raise RuntimeError("Could not extract text from LLM response")
 
 
-async def _persist_response_to_db(response_obj: object | str, provider: str, model: str, text: str) -> None:
+async def _persist_response_to_db(response_obj: Any | str, provider: str, model: str, text: str) -> None:
     """Best-effort: persist LLM response to DB, but do not raise on failure.
 
     Uses async DB session if available.
@@ -118,7 +119,7 @@ async def _persist_response_to_db(response_obj: object | str, provider: str, mod
         except Exception:
             # fallback to sync path if project still exposes sync SessionLocal
             try:
-                with db.SessionLocal() as session:
+                with cast(Any, db.SessionLocal)() as session:
                     rec = models.LLMResponse(
                         request_id=None,
                         provider=provider,

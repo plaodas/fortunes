@@ -76,11 +76,11 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
             "summary": "",
         }
         name_analysis = {
-            "tenkaku": gogaku.get("五格").get("天格").get("吉凶ポイント"),
-            "jinkaku": gogaku.get("五格").get("人格").get("吉凶ポイント"),
-            "chikaku": gogaku.get("五格").get("地格").get("吉凶ポイント"),
-            "gaikaku": gogaku.get("五格").get("外格").get("吉凶ポイント"),
-            "soukaku": gogaku.get("五格").get("総格").get("吉凶ポイント"),
+            "tenkaku": gogaku["五格"]["天格"]["吉凶ポイント"],
+            "jinkaku": gogaku["五格"]["人格"]["吉凶ポイント"],
+            "chikaku": gogaku["五格"]["地格"]["吉凶ポイント"],
+            "gaikaku": gogaku["五格"]["外格"]["吉凶ポイント"],
+            "soukaku": gogaku["五格"]["総格"]["吉凶ポイント"],
             "summary": None,
         }
 

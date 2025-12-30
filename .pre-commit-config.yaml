@@ -11,3 +11,11 @@ repos:
   rev: v0.14.10
   hooks:
   - id: ruff
+- repo: local
+  hooks:
+  - id: mypy-backend-local
+    name: mypy (backend local)
+    entry: bash -lc 'cd backend && python -m mypy app'
+    language: system
+    pass_filenames: false
+    stages: [pre-commit]

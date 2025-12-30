@@ -59,7 +59,7 @@ def parse_line(line: str):
     }
 
 
-def import_file(path: str, source_label: str | None = None) -> None:
+async def import_file(path: str, source_label: str | None = None) -> None:
     print(f"Importing from {path}...")
     inserted = 0
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
@@ -71,8 +71,8 @@ def import_file(path: str, source_label: str | None = None) -> None:
             if not rec:
                 continue
             # insert/update
-            with db.engine.begin() as conn:
-                conn.execute(
+            async with db.engine.begin() as conn:
+                await conn.execute(
                     text(
                         """
                         INSERT INTO kanji (char, codepoint, strokes_text, strokes_min, strokes_max, source)
@@ -108,4 +108,6 @@ if __name__ == "__main__":
         for p in DEFAULT_PATHS:
             print("  ", p)
         raise SystemExit(1)
-    import_file(path, source_label=os.path.basename(path))
+    import asyncio
+
+    asyncio.run(import_file(path, source_label=os.path.basename(path)))
