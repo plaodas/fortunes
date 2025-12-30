@@ -26,6 +26,7 @@ from app.services.prompts.template_life_analysis_summary import (
 )
 from arq import create_pool as arq_create_pool
 from arq.connections import RedisSettings as ArqRedisSettings
+from arq.jobs import Job
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text
@@ -78,7 +79,7 @@ async def ready():
         # import here to keep module import lightweight if aioredis absent
         import aioredis
 
-        redis_url = os.getenv("ARQ_REDIS_URL", "redis://redis:6379")
+        redis_url = os.getenv("ARQ_REDIS_URL")
         r = aioredis.from_url(redis_url)
         try:
             pong = await r.ping()
@@ -250,6 +251,26 @@ async def analyze_enqueue(req: AnalyzeRequest):
             int(req.birth_hour),
         )
         return {"job_id": job.job_id}
+    finally:
+        await pool.close()
+
+
+@app.get("/jobs/{job_id}")
+async def get_job_status(job_id: str):
+    """Return status and result (if available) for an Arq job id."""
+    pool = await arq_create_pool(ArqRedisSettings(host="redis"))
+    try:
+        job = Job(job_id, pool)
+        status = await job.status()
+        res = None
+        try:
+            info = await job.result_info()
+            if info:
+                res = info.result
+        except Exception:
+            res = None
+
+        return {"job_id": job_id, "status": str(status), "result": res}
     finally:
         await pool.close()
 

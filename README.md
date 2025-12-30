@@ -129,7 +129,81 @@ docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
 ```
 
 
-### ジョブのキュー管理 Arq
+
+
+## 永続運用
+### 運用(systemd)：
+ <!-- Service Unit (推奨): docker compose プロジェクト全体を systemd で管理するのが簡単で堅牢 -->
+<!-- ```
+[Unit]
+Description=Fortunes Docker Compose
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/agake/work/fortunes
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+``` -->
+<!-- 個別コンテナ管理: もし worker のみ永続化したければ ExecStart=/usr/bin/docker compose up -d worker を使う。
+注意: ユーザー単位で動かす場合は user-level systemd も可。systemd の Restart= ポリシーや StartLimitBurst で再起動制御。 -->
+
+### ログ
+- ローテーション
+  - `docker-compose.yml`の`logging:`で設定
+<!-- 集中ログ基盤: Loki/Promtail, ELK (Elasticsearch/Logstash/Kibana), Fluentd/Graylog などへ送るのが推奨（検索とアラートが容易）。
+エラートラッキング: Sentry を導入して例外トレースを収集。Worker/Server に SDK を入れるだけでOK。
+ログ保持方針: 法令や容量に合わせて保管期間を決め、古いログは圧縮/削除。 -->
+
+### 監視（メトリクス・アラート）:
+
+<!-- メトリクス収集: Prometheus + Grafana。アプリ側に /metrics を公開（FastAPI に prometheus_client または fastapi-prometheus を導入）。
+重要な指標:
+job queue length（Redis の待ち行列長）
+job failure rate / error count（Worker）
+job processing time（遅延検出）
+Redisメモリ使用率、Postgres接続数、CPU/メモリコンテナリソース
+サンプルアラート（PromQL）:
+job失敗率 > 1% (5m)
+Redis memory > 80%
+job処理時間の95パーセンタイル > 30s
+可視化: Grafana ダッシュボードでSLA指標と最近の失敗を表示。 -->
+
+### ヘルスチェック / Liveness & Readiness:
+ FastAPI に /health （Liveness）と /ready （Readiness 、DB・Redis接続チェック）を追加。Kubernetes での運用や systemd 側の監視で使う。
+
+
+### トレーシング & 分析:
+
+<!-- 分散トレーシング: OpenTelemetry + Jaeger（LLM呼び出しや DB クエリの遅延調査に有効）。
+サンプル: opentelemetry-instrumentation-fastapi を導入して自動計測。 -->
+
+### 永続データ管理 / バックアップ:
+
+<!-- Postgres バックアップ: 定期的な pg_dump / WAL アーカイブ。自動化スクリプト + S3 などへの保存。
+DB マイグレーション管理: alembic 等でスキーマ管理とリリース手順を確立。 -->
+
+### 運用オペレーション（通知・Runbook）:
+
+<!-- アラート通知: Slack/Email/PagerDuty へ通知（Grafana/Alertmanager 経由）。
+Runbook: 代表的問題（Redis接続切断、LLM APIキー切れ、DB接続枯渇）の復旧手順を文書化。
+監査ログ: 主要操作（設定変更・deploy・DB restore）の記録。 -->
+
+### セキュリティ・設定管理:
+
+<!-- 秘密管理: 環境変数を直接置かず Vault / AWS Secrets Manager 等で管理。
+アクセス制御: DB/Redis のネットワークアクセスは内部ネットワークに限定。 -->
+
+
+
+## その他
+### (参考)ジョブのキュー管理 Arq
 ```bash
 $ docker compose exec backend bash -lc "PYTHONPATH=/app  python -m app.worker"
 

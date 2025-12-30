@@ -24,7 +24,6 @@ services:
       - 8000:8000
     environment:
       PYTHONPATH: /app
-      DATABASE_URL: postgres://postgres:password@db:5432/fortunes
     depends_on:
       - db
       - redis
@@ -38,11 +37,11 @@ services:
     build: ./backend
     env_file:
       - .env
-    command: bash -c "PYTHONPATH=/app ARQ_REDIS_URL=redis://redis:6379 python -m app.worker"
+    volumes:
+      - ./backend:/app
+    command: python -m app.worker
     environment:
       PYTHONPATH: /app
-      DATABASE_URL: postgres://postgres:password@db:5432/fortunes
-      ARQ_REDIS_URL: redis://redis:6379
     depends_on:
       - db
       - redis
