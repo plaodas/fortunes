@@ -4,8 +4,8 @@ import os
 from typing import Any, List, cast
 
 from app import db, models
-from app.dtos.inputs.analyze_request import AnalyzeRequest
-from app.dtos.outputs.analysis_out import AnalysisOut
+from app.schemas.inputs.analyze_request import AnalyzeRequest
+from app.schemas.outputs.analysis_out import AnalysisOut
 
 # adapter for provider switching
 from arq import create_pool as arq_create_pool
