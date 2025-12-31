@@ -11,6 +11,8 @@ AIに渡す前の“構造化された鑑定データ” を作ります。
 """
 
 # 0. 必要なインポート
+from typing import Any
+
 from app.services.constants import (
     BRANCH_TRAITS,
     KEY_MAP,
@@ -44,7 +46,7 @@ def interpret_pillar(pillar_name: str, kanshi: str):
 
 # 2. 五行の強弱を判定するロジック
 # 五行バランスは、命式から得られたカウント（例：木4 火2 土1 金1 水0）を使います。
-def analyze_strength(balance: dict) -> tuple[list[str], list[str]]:
+def analyze_strength(balance: dict[str, int]) -> tuple[list[str], list[str]]:
     """
     balance = {"木":4, "火":2, "土":1, "金":1, "水":0}
     """
@@ -58,7 +60,7 @@ def analyze_strength(balance: dict) -> tuple[list[str], list[str]]:
 
 
 # 2. 五行バランスの解釈（前回のロジックを統合）
-def interpret_wuxing(balance: dict, day_stem: str):
+def interpret_wuxing(balance: dict[str, int], day_stem: str):
     day_ele = STEM_TO_ELEMENT[day_stem]
     strong, weak = analyze_strength(balance)
 
@@ -77,13 +79,13 @@ def interpret_wuxing(balance: dict, day_stem: str):
 
 # 3. 四柱＋五行を統合した総合鑑定ロジック
 # ここが今回のメインです。
-def synthesize_reading(meishiki: dict, balance: dict) -> dict:
+def synthesize_reading(meishiki: dict[str, str], balance: dict[str, int]) -> dict[str, Any]:
     """
     arg:
       meishiki: {"年柱":"乙卯", "月柱":"戊寅", "日柱":"辛巳", "時柱":"乙卯"}
       balance: {'木':4,'火':2,'土':1,'金':1,'水':0}
     return:
-      dict
+      dict[str, Any]
     """
 
     # 日主（本人の五行）
@@ -115,7 +117,7 @@ def synthesize_reading(meishiki: dict, balance: dict) -> dict:
 
 
 # キーの日本語ー＞英語変換ロジック
-def _remap_keys(obj: dict):
+def _remap_keys(obj: dict[str, Any]) -> dict[str, Any]:
     """Recursively remap dict keys according to KEY_MAP."""
     if isinstance(obj, dict):
         new = {}
@@ -129,5 +131,5 @@ def _remap_keys(obj: dict):
 
 
 # ラッパー関数：総合鑑定後のキーを英語に変換(未使用)
-def remapped_synthesize_reading(life_analysis: dict) -> dict:
+def remapped_synthesize_reading(life_analysis: dict[str, Any]) -> dict[str, Any]:
     return _remap_keys(life_analysis)

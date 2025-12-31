@@ -1,9 +1,9 @@
-from typing import Any, Dict
+from typing import Any
 
 
-def fake_llm_response(model: str, messages: list[dict[str, str]]) -> Dict[str, Any]:
+def fake_llm_response(model: str, messages: list[dict[str, str]]) -> dict[str, Any]:
     """Fake LLM response for testing."""
-    return {
+    base = {
         "id": "fake-response-id",
         "model": model,
         "usage": {
@@ -35,3 +35,4 @@ def fake_llm_response(model: str, messages: list[dict[str, str]]) -> Dict[str, A
         "vertex_ai_grounding_metadata": [],
         "vertex_ai_url_context_metadata": [],
     }
+    return base

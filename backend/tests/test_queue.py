@@ -1,8 +1,7 @@
-import asyncio
-
 import pytest
 from app import tasks as tasks_module
 from app.main import app
+from app.models import LLMResponse
 from httpx import ASGITransport, AsyncClient
 
 URL_PREFIX = "/api/v1"
@@ -69,13 +68,52 @@ async def test_get_job_status_returns_complete_and_result(monkeypatch: pytest.Mo
     assert body["result"] == {"id": 1, "name": "太 郎"}
 
 
-@pytest.mark.anyio
-async def test_process_analysis_creates_and_returns_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Patch litellm adapter to return deterministic strings
-    monkeypatch.setattr(tasks_module.litellm_adapter, "make_analysis_detail", lambda *a, **k: asyncio.sleep(0) or "detail")
-    monkeypatch.setattr(tasks_module.litellm_adapter, "make_analysis_summary", lambda *a, **k: asyncio.sleep(0) or "summary")
+@pytest.fixture
+def fake_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeLLMResponse:
+        def __init__(self, provider, model):
+            self.provider = provider
+            self.model = model
 
-    # Fake async session context manager
+        async def make_analysis(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+            message = {
+                "role": "assistant",
+                "images": [],
+                "content": "あなたは、太陽のように温かく…",
+            }
+            choices = [{"index": 0, "message": message, "finish_reason": "stop"}]
+            raw = {
+                "id": "jANVaYGXApSR0-kP6Zbz6Ak",
+                "model": "gemini-2.5-flash-lite",
+                "object": "chat.completion",
+                "choices": choices,
+                "created": 1767179146,
+                "system_fingerprint": None,
+            }
+
+            return LLMResponse(
+                id=1,
+                request_id=None,
+                provider=self.provider,
+                model=self.model,
+                model_version=None,
+                response_id="4AtKaYDXNIWU1e8P1v6H-A0",
+                prompt_hash=None,
+                response_text="人生という桃源郷を巡る旅の途中…",
+                usage={"completion_tokens": 78, "completion_tokens_details": None},
+                raw=raw,
+                created_at="2025-12-23 03:26:25.385178+00",
+            )
+
+    monkeypatch.setattr(
+        tasks_module.litellm_adapter,
+        "LiteLlmAdapter",
+        FakeLLMResponse,
+    )
+
+
+@pytest.fixture
+def fake_session() -> type:
     class FakeSession:
         def __init__(self):
             self.added = None
@@ -87,7 +125,6 @@ async def test_process_analysis_creates_and_returns_id(monkeypatch: pytest.Monke
             return False
 
         async def get(self, model, key):
-            # return an object with strokes_min
             class K:
                 def __init__(self, ch):
                     self.char = ch
@@ -96,19 +133,33 @@ async def test_process_analysis_creates_and_returns_id(monkeypatch: pytest.Monke
             return K(key)
 
         def add(self, obj):
-            # simulate ORM assigning id on add
-            obj.id = 42
+            obj.id = 99999
             self.added = obj
 
         async def commit(self):
-            return True
+            return
 
+        async def rollback(self):
+            return
+
+        async def close(self):
+            return
+
+    return FakeSession
+
+
+@pytest.fixture
+def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> None:
     def fake_sessionlocal():
-        return FakeSession()
+        return fake_session()
 
     monkeypatch.setattr(tasks_module.db, "SessionLocal", fake_sessionlocal)
 
+
+@pytest.mark.anyio
+async def test_process_analysis_creates_and_returns_id(fake_llm, fake_session_local) -> None:
     res = await tasks_module.process_analysis({}, "太", "郎", "1990-01-01", 12)
+
     assert isinstance(res, dict)
-    assert res.get("id") == 42
+    assert res.get("id") == 99999
     assert "name" in res
