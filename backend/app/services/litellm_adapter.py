@@ -10,34 +10,11 @@ from litellm import completion
 logger = logging.getLogger(__name__)
 
 
-def _is_debug_fake() -> bool:
-    """Return True when runtime env requests a fake response (checked at call time).
-
-    This allows tests to set `os.environ['DEBUG_LITELLM_FAKE_RESP'] = '1'`
-    dynamically without needing to reload the module.
-    """
-    return os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
-
-
-def _fake_response(model: str, messages: list[dict[str, str]]) -> dict:
-    """fake_llm_response_template に messages を埋め込んで返す"""
-    from tests.fake_llm_response_template import fake_llm_response_template
-
-    logger.info("DEBUG mode: returning fake response")
-    message = f"system_prompt_preview={messages[0]['content'][:80]} user_prompt_preview={messages[1]['content'][:80]}"
-    fake_llm_response_template["choices"][0]["message"]["content"] = f"[FAKE RESP] model={model} {message}"
-    # fake_llm_response_templateをjsonオブジェクトとして返す
-    return fake_llm_response_template
-
-
 async def _call_llm(model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict:
     """Call the provider (or return fake response). Returns raw response or string for fake.
 
     Calls the sync `completion` in a thread to avoid blocking the event loop.
     """
-    if _is_debug_fake():
-        return _fake_response(model=model, messages=messages)
-
     # call blocking completion in a thread — use keyword args to avoid
     # accidental positional-argument mismatches with litellm.signature
     completion_return = await asyncio.to_thread(

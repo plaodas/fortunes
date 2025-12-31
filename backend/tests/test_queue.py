@@ -9,7 +9,7 @@ URL_PREFIX = "/api/v1"
 
 
 @pytest.mark.anyio
-async def test_analyze_enqueue_returns_job_id(monkeypatch):
+async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakePool:
         def __init__(self):
             self.closed = False
@@ -36,7 +36,7 @@ async def test_analyze_enqueue_returns_job_id(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_get_job_status_returns_complete_and_result(monkeypatch):
+async def test_get_job_status_returns_complete_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeJob:
         def __init__(self, job_id, pool):
             self.job_id = job_id
@@ -70,7 +70,7 @@ async def test_get_job_status_returns_complete_and_result(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_process_analysis_creates_and_returns_id(monkeypatch):
+async def test_process_analysis_creates_and_returns_id(monkeypatch: pytest.MonkeyPatch) -> None:
     # Patch litellm adapter to return deterministic strings
     monkeypatch.setattr(tasks_module.litellm_adapter, "make_analysis_detail", lambda *a, **k: asyncio.sleep(0) or "detail")
     monkeypatch.setattr(tasks_module.litellm_adapter, "make_analysis_summary", lambda *a, **k: asyncio.sleep(0) or "summary")
