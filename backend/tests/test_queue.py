@@ -150,7 +150,6 @@ def fake_session() -> type:
 
 @pytest.fixture
 def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> None:
-
     def fake_sessionlocal():
         return fake_session()
 
