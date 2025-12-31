@@ -58,7 +58,7 @@ services:
       - 3000:3000
     command: sh -c "npm install --silent && npm run dev"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     logging:
       driver: json-file
       options:
