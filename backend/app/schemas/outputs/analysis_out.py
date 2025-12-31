@@ -1,13 +1,17 @@
-from pydantic import BaseModel
+from datetime import date, datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class AnalysisOut(BaseModel):
     id: int
     name: str
-    birth_date: str
+    birth_date: date  # ← date 型で受ける
     birth_hour: int
-    result_birth: dict
     result_name: dict
-    summary: str
-    detail: str
-    created_at: str | None = None
+    result_birth: dict
+    summary: str | None
+    detail: str | None
+    created_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)

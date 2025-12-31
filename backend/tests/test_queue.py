@@ -5,6 +5,8 @@ from app import tasks as tasks_module
 from app.main import app
 from httpx import ASGITransport, AsyncClient
 
+URL_PREFIX = "/api/v1"
+
 
 @pytest.mark.anyio
 async def test_analyze_enqueue_returns_job_id(monkeypatch):
@@ -18,16 +20,16 @@ async def test_analyze_enqueue_returns_job_id(monkeypatch):
 
             return J()
 
-        async def close(self):
+        async def aclose(self):
             self.closed = True
 
     async def fake_create_pool(*args, **kwargs):
         return FakePool()
 
-    monkeypatch.setattr("app.main.arq_create_pool", fake_create_pool)
+    monkeypatch.setattr("app.services.job_service.create_pool", fake_create_pool)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.post("/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
+        r = await ac.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
 
     assert r.status_code == 200
     assert r.json().get("job_id") == "fake-job-1"
@@ -50,16 +52,16 @@ async def test_get_job_status_returns_complete_and_result(monkeypatch):
 
     async def fake_create_pool(*args, **kwargs):
         class P:
-            async def close(self):
+            async def aclose(self):
                 pass
 
         return P()
 
-    monkeypatch.setattr("app.main.arq_create_pool", fake_create_pool)
-    monkeypatch.setattr("app.main.Job", FakeJob)
+    monkeypatch.setattr("app.services.job_service.create_pool", fake_create_pool)
+    monkeypatch.setattr("app.services.job_service.Job", FakeJob)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.get("/jobs/fake-job-1")
+        r = await ac.get(URL_PREFIX + "/jobs/fake-job-1")
 
     assert r.status_code == 200
     body = r.json()
