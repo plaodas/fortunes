@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any, cast
 
 import litellm
 from litellm import completion
@@ -20,13 +19,18 @@ def _is_debug_fake() -> bool:
     return os.getenv("DEBUG_LITELLM_FAKE_RESP", "0") in ("1", "true", "True")
 
 
-def _fake_response(model: str, messages: list[dict[str, str]]) -> str:
-    message = f"system_prompt_preview={messages[0]['content'][:80]} user_prompt_preview={messages[1]['content'][:80]}"
+def _fake_response(model: str, messages: list[dict[str, str]]) -> dict:
+    """fake_llm_response_template に messages を埋め込んで返す"""
+    from tests.fake_llm_response_template import fake_llm_response_template
+
     logger.info("DEBUG mode: returning fake response")
-    return f"[FAKE RESP] model={model} {message}"
+    message = f"system_prompt_preview={messages[0]['content'][:80]} user_prompt_preview={messages[1]['content'][:80]}"
+    fake_llm_response_template["choices"][0]["message"]["content"] = f"[FAKE RESP] model={model} {message}"
+    # fake_llm_response_templateをjsonオブジェクトとして返す
+    return fake_llm_response_template
 
 
-async def _call_llm(provider: str, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> Any | str:
+async def _call_llm(model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict:
     """Call the provider (or return fake response). Returns raw response or string for fake.
 
     Calls the sync `completion` in a thread to avoid blocking the event loop.
@@ -36,49 +40,28 @@ async def _call_llm(provider: str, model: str, temperature: float, num_retries: 
 
     # call blocking completion in a thread — use keyword args to avoid
     # accidental positional-argument mismatches with litellm.signature
-    return await asyncio.to_thread(
+    completion_return = await asyncio.to_thread(
         completion,
         model=model,
         messages=messages,
         temperature=temperature,
         num_retries=num_retries,
     )
+    return completion_return
 
 
-def _extract_text_from_response(response_obj: Any | str) -> str:
+def _extract_text_from_response(response_obj: dict) -> str:
     """Extract textual content from various response shapes. Return text or raise."""
-    # if fake path returns a string already
-    if isinstance(response_obj, str):
-        return response_obj
-
     # common OpenAI-like location
     try:
-        return response_obj.choices[0].message.content
+        return response_obj["choices"][0]["message"]["content"]
     except Exception:
-        logger.warning("Could not extract from response. Trying raw parsing...")
-
-    # try to parse raw/dict forms
-    raw = None
-    try:
-        raw = getattr(response_obj, "raw", None) or (response_obj.to_dict() if hasattr(response_obj, "to_dict") else None)
-    except Exception:
-        raw = None
-
-    if isinstance(raw, dict):
-        candidates = raw.get("candidates") or raw.get("choices")
-        if candidates and isinstance(candidates, list) and len(candidates) > 0:
-            part = candidates[0].get("content") or candidates[0].get("message")
-            if isinstance(part, dict):
-                parts = part.get("parts")
-                if parts and isinstance(parts, list):
-                    maybe = parts[0].get("text")
-                    if maybe:
-                        return maybe
+        logger.error("Could not extract from response. Trying raw parsing...")
 
     raise RuntimeError("Could not extract text from LLM response")
 
 
-async def _persist_response_to_db(response_obj: Any | str, provider: str, model: str, text: str) -> None:
+async def _persist_response_to_db(response_obj: dict, provider: str, model: str, text: str) -> None:
     """Best-effort: persist LLM response to DB, but do not raise on failure.
 
     Uses async DB session if available.
@@ -86,55 +69,27 @@ async def _persist_response_to_db(response_obj: Any | str, provider: str, model:
     try:
         from app import db, models
 
-        raw_obj = None
-        try:
-            raw_obj = getattr(response_obj, "raw", None) or (response_obj.to_dict() if hasattr(response_obj, "to_dict") else None)
-        except Exception:
-            raw_obj = None
+        raw_obj: dict = response_obj["raw"]
 
-        model_version = None
-        response_id = None
-        usage_obj = None
-        if isinstance(raw_obj, dict):
-            model_version = raw_obj.get("modelVersion") or raw_obj.get("model_version")
-            response_id = raw_obj.get("responseId") or raw_obj.get("id")
-            usage_obj = raw_obj.get("usageMetadata") or raw_obj.get("usage")
+        model_version = raw_obj.get("model_version", None)
+        response_id = raw_obj.get("id", None)
+        usage_obj = raw_obj.get("usage", None)
 
-        # use async session if available
-        try:
-            async with db.SessionLocal() as session:
-                rec = models.LLMResponse(
-                    request_id=None,
-                    provider=provider,
-                    model=model,
-                    model_version=model_version,
-                    response_id=response_id,
-                    prompt_hash=None,
-                    response_text=text,
-                    usage=usage_obj,
-                    raw=raw_obj,
-                )
-                session.add(rec)
-                await session.commit()
-        except Exception:
-            # fallback to sync path if project still exposes sync SessionLocal
-            try:
-                with cast(Any, db.SessionLocal)() as session:
-                    rec = models.LLMResponse(
-                        request_id=None,
-                        provider=provider,
-                        model=model,
-                        model_version=model_version,
-                        response_id=response_id,
-                        prompt_hash=None,
-                        response_text=text,
-                        usage=usage_obj,
-                        raw=raw_obj,
-                    )
-                    session.add(rec)
-                    session.commit()
-            except Exception:
-                pass
+        async with db.SessionLocal() as session:
+            rec = models.LLMResponse(
+                request_id=None,
+                provider=provider,
+                model=model,
+                model_version=model_version,
+                response_id=response_id,
+                prompt_hash=None,
+                response_text=text,
+                usage=usage_obj,
+                raw=raw_obj,
+            )
+            session.add(rec)
+            await session.commit()
+
     except Exception as e:
         logger.warning("Could not persist LLM response: %s", e)
 
@@ -157,7 +112,7 @@ async def _generate(**llm_param) -> str:
     messages: list[dict[str, str]] = llm_param["messages"]
 
     try:
-        response = await _call_llm(provider, model, temperature, num_retries, messages)
+        response = await _call_llm(model, temperature, num_retries, messages)
         text = _extract_text_from_response(response)
         # persist in background (don't await to keep latency low)
         asyncio.create_task(_persist_response_to_db(response, provider, model, text))
