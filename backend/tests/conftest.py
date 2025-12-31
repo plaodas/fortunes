@@ -1,5 +1,6 @@
 import sys
 import types
+from typing import Any
 
 import pytest
 from tests.utils.fake_llm_response import fake_llm_response
@@ -19,10 +20,10 @@ def ci_test_environment(monkeypatch):
     # ensure tests use fake LLM responses
     monkeypatch.setenv("GEMINI_API_KEY", "")
 
-    async def _fake_call_llm(model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict:
+    async def _fake_call_llm(ctx: Any, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict:
         return fake_llm_response(model=model, messages=messages)
 
-    monkeypatch.setattr("app.services.litellm_adapter._call_llm", _fake_call_llm)
+    monkeypatch.setattr("app.services.litellm_adapter.LiteLlmAdapter._call_llm", _fake_call_llm)
 
     # -- jinja2 stub (safe no-op rendering)
     jinja_mod = types.ModuleType("jinja2")

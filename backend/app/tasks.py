@@ -34,67 +34,93 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
 
     # fetch kanji strokes using async session
     async with db.SessionLocal() as session:
+        try:
 
-        async def _get_strokes(chars: list[str]):
-            out = []
-            for ch in chars:
-                if not ch or not ch.strip():
-                    continue
-                c = ch[0]
-                k = await session.get(models.Kanji, c)
-                out.append((ch, int(k.strokes_min) if (k and k.strokes_min is not None) else 0))
-            return out
+            async def _get_strokes(chars: list[str]):
+                out = []
+                for ch in chars:
+                    if not ch or not ch.strip():
+                        continue
+                    c = ch[0]
+                    k = await session.get(models.Kanji, c)
+                    out.append((ch, int(k.strokes_min) if (k and k.strokes_min is not None) else 0))
+                return out
 
-        strokes_sei = await _get_strokes(list(name_sei))
-        strokes_mei = await _get_strokes(list(name_mei))
+            strokes_sei = await _get_strokes(list(name_sei))
+            strokes_mei = await _get_strokes(list(name_mei))
 
-        gogaku = get_gogaku(strokes_sei, strokes_mei)
+            gogaku = get_gogaku(strokes_sei, strokes_mei)
 
-        ctx_data = birth_analysis | gogaku
-        prompts_detail_user = render_life_analysis(ctx_data, TEMPLATE_DETAIL_USER)
-        prompts_summary_user = render_life_analysis(ctx_data, TEMPLATE_SUMMARY_USER)
+            ctx_data = birth_analysis | gogaku
+            prompts_detail_user = render_life_analysis(ctx_data, TEMPLATE_DETAIL_USER)
+            prompts_summary_user = render_life_analysis(ctx_data, TEMPLATE_SUMMARY_USER)
 
-        # Call LLMs (async)
-        report_detail = await litellm_adapter.make_analysis_detail(TEMPLATE_DETAIL_SYSTEM, prompts_detail_user)
-        report_summary = await litellm_adapter.make_analysis_summary(TEMPLATE_SUMMARY_SYSTEM, prompts_summary_user)
+            # 結果取得。LOGは別セッションで👇の方で実施
+            adapter_detail = litellm_adapter.LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash")  # model="gemini/gemini-2.5-pro"
+            llm_response_detail = await adapter_detail.make_analysis(system_prompt=TEMPLATE_DETAIL_SYSTEM, user_prompt=prompts_detail_user)
 
-        birth_analysis = {
-            "meishiki": {
-                "year": meishiki.get("年柱"),
-                "month": meishiki.get("月柱"),
-                "day": meishiki.get("日柱"),
-                "hour": meishiki.get("時柱"),
+            adapter_summary = litellm_adapter.LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash-lite")
+            llm_response_summary = await adapter_summary.make_analysis(system_prompt=TEMPLATE_SUMMARY_SYSTEM, user_prompt=prompts_summary_user)
+
+            birth_analysis = {
+                "meishiki": {
+                    "year": meishiki.get("年柱"),
+                    "month": meishiki.get("月柱"),
+                    "day": meishiki.get("日柱"),
+                    "hour": meishiki.get("時柱"),
+                    "summary": "",
+                },
+                "gogyo": {
+                    "wood": gogyo_balance.get("木", 0),
+                    "fire": gogyo_balance.get("火", 0),
+                    "earth": gogyo_balance.get("土", 0),
+                    "metal": gogyo_balance.get("金", 0),
+                    "water": gogyo_balance.get("水", 0),
+                },
                 "summary": "",
-            },
-            "gogyo": {
-                "wood": gogyo_balance.get("木", 0),
-                "fire": gogyo_balance.get("火", 0),
-                "earth": gogyo_balance.get("土", 0),
-                "metal": gogyo_balance.get("金", 0),
-                "water": gogyo_balance.get("水", 0),
-            },
-            "summary": "",
-        }
-        name_analysis = {
-            "tenkaku": gogaku["五格"]["天格"]["吉凶ポイント"],
-            "jinkaku": gogaku["五格"]["人格"]["吉凶ポイント"],
-            "chikaku": gogaku["五格"]["地格"]["吉凶ポイント"],
-            "gaikaku": gogaku["五格"]["外格"]["吉凶ポイント"],
-            "soukaku": gogaku["五格"]["総格"]["吉凶ポイント"],
-            "summary": None,
-        }
+            }
+            name_analysis = {
+                "tenkaku": gogaku["五格"]["天格"]["吉凶ポイント"],
+                "jinkaku": gogaku["五格"]["人格"]["吉凶ポイント"],
+                "chikaku": gogaku["五格"]["地格"]["吉凶ポイント"],
+                "gaikaku": gogaku["五格"]["外格"]["吉凶ポイント"],
+                "soukaku": gogaku["五格"]["総格"]["吉凶ポイント"],
+                "summary": None,
+            }
 
-        # persist Analysis
-        obj = models.Analysis(
-            name=name_sei + " " + name_mei,
-            birth_date=birth_date_obj,
-            birth_hour=birth_hour,
-            result_birth=birth_analysis,
-            result_name=name_analysis,
-            summary=report_summary,
-            detail=report_detail,
-        )
-        session.add(obj)
-        await session.commit()
+            # persist Analysis
+            obj = models.Analysis(
+                name=name_sei + " " + name_mei,
+                birth_date=birth_date_obj,
+                birth_hour=birth_hour,
+                result_birth=birth_analysis,
+                result_name=name_analysis,
+                summary=llm_response_summary.response_text if llm_response_summary else None,
+                detail=llm_response_detail.response_text if llm_response_detail else None,
+            )
+            session.add(obj)
+            await session.commit()
 
-        return {"id": obj.id, "name": obj.name}
+            ret = {"id": obj.id, "name": obj.name}
+
+            # Arq のワーカーは「1 ジョブ＝1 タスク」create_task() しても同じイベントループ内で動くだけなので結局同じプロセス・同じワーカーで実行される
+            # TODO: LOGは再エンキューする
+            async with db.SessionLocal() as session_log:
+                try:
+                    session_log.add(llm_response_detail)
+                    session_log.add(llm_response_summary)
+                    await session_log.commit()
+                except Exception:
+                    await session_log.rollback()
+
+                finally:
+                    await session_log.close()
+
+        except Exception:
+            await session.rollback()
+            raise
+
+        finally:
+            await session.close()
+
+    return ret

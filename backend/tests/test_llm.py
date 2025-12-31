@@ -1,15 +1,10 @@
 import pytest
-from app.services.litellm_adapter import make_analysis_detail, make_analysis_summary
+from app.services.litellm_adapter import LiteLlmAdapter
 
 
 @pytest.mark.asyncio
 async def test_make_analysis_detail_with_ci_fixture():
-    result = await make_analysis_detail("システム＿プロンプト", "ユーザープロンプト")
+    lite_llm_adapter = LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash")
+    llm_response = await lite_llm_adapter.make_analysis(system_prompt="システム＿プロンプト", user_prompt="ユーザープロンプト")
 
-    assert result == "[FAKE RESP] model=gemini/gemini-2.5-flash system_prompt=システム＿プロンプト user_prompt=ユーザープロンプト"
-
-
-@pytest.mark.asyncio
-async def test_make_analysis_summary_with_ci_fixture():
-    result = await make_analysis_summary("システム＿プロンプト", "ユーザープロンプト")
-    assert result == "[FAKE RESP] model=gemini/gemini-2.5-flash-lite system_prompt=システム＿プロンプト user_prompt=ユーザープロンプト"
+    assert llm_response.response_text == "[FAKE RESP] model=gemini/gemini-2.5-flash system_prompt=システム＿プロンプト user_prompt=ユーザープロンプト"

@@ -1,8 +1,7 @@
-import asyncio
-
 import pytest
 from app import tasks as tasks_module
 from app.main import app
+from app.models import LLMResponse
 from httpx import ASGITransport, AsyncClient
 
 URL_PREFIX = "/api/v1"
@@ -69,39 +68,100 @@ async def test_get_job_status_returns_complete_and_result(monkeypatch: pytest.Mo
     assert body["result"] == {"id": 1, "name": "太 郎"}
 
 
+class FakeLLMResponse:
+    def __init__(self, provider, model):
+        self.provider = provider
+        self.model = model
+
+    async def make_analysis(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+        return LLMResponse(
+            id=1,
+            request_id=None,
+            provider=self.provider,
+            model=self.model,
+            model_version=None,
+            response_id="4AtKaYDXNIWU1e8P1v6H-A0",
+            prompt_hash=None,
+            response_text="人生という桃源郷を巡る旅の途中、今は少し風向きが乱れ、足元に注意が必要な時期かもしれません。しかし、霧の向こうには確かに光が差し込んでいます。",
+            usage={
+                "total_tokens": 624,
+                "prompt_tokens": 546,
+                "completion_tokens": 78,
+                "completion_tokens_details": None,
+            },
+            raw={
+                "id": "jANVaYGXApSR0-kP6Zbz6Ak",
+                "model": "gemini-2.5-flash-lite",
+                "object": "chat.completion",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "images": [],
+                            "content": "あなたは、太陽のように温かく、周囲を照らす光を放つ旅人。時に霧がかかることもあるかもしれませんが、その先には必ず輝く桃源郷が待っています。",
+                            "tool_calls": None,
+                            "function_call": None,
+                            "thinking_blocks": [],
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "created": 1767179146,
+                "system_fingerprint": None,
+                "vertex_ai_safety_results": [],
+                "vertex_ai_citation_metadata": [],
+                "vertex_ai_grounding_metadata": [],
+                "vertex_ai_url_context_metadata": [],
+            },
+            created_at="2025-12-23 03:26:25.385178+00",
+        )
+
+
+# Fake async session context manager
+class FakeSession:
+    def __init__(self):
+        self.added = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def get(self, model, key):
+        # return an object with strokes_min
+        class K:
+            def __init__(self, ch):
+                self.char = ch
+                self.strokes_min = 4 if ch == "太" else 9
+
+        return K(key)
+
+    def add(self, obj):
+        # simulate ORM assigning id on add
+        obj.id = 42
+        self.added = obj
+
+    async def commit(self):
+        return
+
+    async def rollback(self):
+        return
+
+    async def close(self):
+        return
+
+
 @pytest.mark.anyio
 async def test_process_analysis_creates_and_returns_id(monkeypatch: pytest.MonkeyPatch) -> None:
     # Patch litellm adapter to return deterministic strings
-    monkeypatch.setattr(tasks_module.litellm_adapter, "make_analysis_detail", lambda *a, **k: asyncio.sleep(0) or "detail")
-    monkeypatch.setattr(tasks_module.litellm_adapter, "make_analysis_summary", lambda *a, **k: asyncio.sleep(0) or "summary")
 
-    # Fake async session context manager
-    class FakeSession:
-        def __init__(self):
-            self.added = None
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return False
-
-        async def get(self, model, key):
-            # return an object with strokes_min
-            class K:
-                def __init__(self, ch):
-                    self.char = ch
-                    self.strokes_min = 4 if ch == "太" else 9
-
-            return K(key)
-
-        def add(self, obj):
-            # simulate ORM assigning id on add
-            obj.id = 42
-            self.added = obj
-
-        async def commit(self):
-            return True
+    monkeypatch.setattr(
+        tasks_module.litellm_adapter,
+        "LiteLlmAdapter",
+        FakeLLMResponse,
+    )
 
     def fake_sessionlocal():
         return FakeSession()
