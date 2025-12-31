@@ -19,7 +19,7 @@ from app.services.prompts.template_life_analysis_summary import (
 )
 
 
-async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: str, birth_hour: int) -> dict:
+async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: str, birth_hour: int) -> dict[str, Any]:
     """Arq worker task: perform the analysis and persist result.
 
     Returns a dict summary for convenience.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from typing import Any
 
 import litellm
 from app import models
@@ -51,10 +52,9 @@ class LiteLlmAdapter:
         try:
             llm_response = await self._call_llm(self.model, temperature, num_retries, messages)
             text = self._extract_text_from_response(llm_response)
-            raw_obj: dict = llm_response["raw"]
-            model_version = raw_obj.get("model_version", None)
-            response_id = raw_obj.get("id", None)
-            usage_obj = raw_obj.get("usage", None)
+            model_version = llm_response.get("model_version", None)
+            response_id = llm_response.get("id", None)
+            usage_obj = llm_response.get("usage", None)
             return models.LLMResponse(
                 request_id=None,
                 provider=self.provider,
@@ -64,7 +64,7 @@ class LiteLlmAdapter:
                 prompt_hash=None,
                 response_text=text,
                 usage=usage_obj,
-                raw=raw_obj,
+                raw=llm_response,
             )
 
         except litellm.AuthenticationError as e:
@@ -80,7 +80,7 @@ class LiteLlmAdapter:
             logger.error("llm error: %s", e)
             raise
 
-    async def _call_llm(self, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict:
+    async def _call_llm(self, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict[str, Any]:
         """Call the provider (or return fake response). Returns raw response or string for fake.
 
         Calls the sync `completion` in a thread to avoid blocking the event loop.
@@ -96,7 +96,7 @@ class LiteLlmAdapter:
         )
         return completion_return
 
-    def _extract_text_from_response(self, response_obj: dict) -> str:
+    def _extract_text_from_response(self, response_obj: dict[str, Any]) -> str:
         """Extract textual content from various response shapes. Return text or raise."""
         # common OpenAI-like location
         try:

@@ -1,9 +1,9 @@
-from typing import Any, Dict
+from typing import Any
 
 from jinja2 import Environment
 
 
-def render_life_analysis(context: Dict[str, Any], template: str) -> str:
+def render_life_analysis(context: dict[str, Any], template: str) -> str:
     """Render the life analysis template using Jinja2.
 
     - `context` may contain keys with non-ASCII names (e.g. '年柱').

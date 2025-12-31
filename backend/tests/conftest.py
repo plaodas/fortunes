@@ -20,7 +20,7 @@ def ci_test_environment(monkeypatch):
     # ensure tests use fake LLM responses
     monkeypatch.setenv("GEMINI_API_KEY", "")
 
-    async def _fake_call_llm(ctx: Any, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict:
+    async def _fake_call_llm(ctx: Any, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict[str, Any]:
         return fake_llm_response(model=model, messages=messages)
 
     monkeypatch.setattr("app.services.litellm_adapter.LiteLlmAdapter._call_llm", _fake_call_llm)

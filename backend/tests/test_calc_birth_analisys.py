@@ -1,10 +1,12 @@
+from typing import Any
+
 from app.services.calc_birth_analysis import synthesize_reading
 
 
 def test_synthesize_reading() -> None:
     meishiki = {"年柱": "乙卯", "月柱": "戊寅", "日柱": "辛巳", "時柱": "乙卯"}
     balance = {"木": 4, "火": 2, "土": 1, "金": 1, "水": 0}
-    result: dict = synthesize_reading(meishiki, balance)
+    result: dict[str, Any] = synthesize_reading(meishiki, balance)
     print(result)
     expect_result = {
         "四柱": {

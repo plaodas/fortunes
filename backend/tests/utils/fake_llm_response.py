@@ -1,4 +1,7 @@
-def fake_llm_response(model: str, messages: list[dict[str, str]]) -> dict:
+from typing import Any
+
+
+def fake_llm_response(model: str, messages: list[dict[str, str]]) -> dict[str, Any]:
     """Fake LLM response for testing."""
     base = {
         "id": "fake-response-id",
@@ -32,6 +35,4 @@ def fake_llm_response(model: str, messages: list[dict[str, str]]) -> dict:
         "vertex_ai_grounding_metadata": [],
         "vertex_ai_url_context_metadata": [],
     }
-
-    base["raw"] = base.copy()
     return base
