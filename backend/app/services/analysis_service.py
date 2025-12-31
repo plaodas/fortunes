@@ -3,6 +3,7 @@ from typing import List
 
 from app import models
 from app.schemas.outputs.analysis_out import AnalysisOut
+from app.utils.dto import dto_list
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +14,7 @@ class AnalysisService:
         res = await db.execute(stmt)
         rows = res.scalars().all()
 
-        return [AnalysisOut.model_validate(a, from_attributes=True) for a in rows]
+        return dto_list(rows, AnalysisOut)
 
     async def delete_analysis(self, db: AsyncSession, analysis_id: int) -> bool:
         stmt = select(models.Analysis).where(models.Analysis.id == analysis_id)
