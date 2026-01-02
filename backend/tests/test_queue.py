@@ -1,4 +1,8 @@
+from typing import Any, AsyncGenerator
+
 import pytest
+from app import db as db_module
+from app import models
 from app import tasks as tasks_module
 from app.main import app
 from app.models import LLMResponse
@@ -9,29 +13,54 @@ URL_PREFIX = "/api/v1"
 
 @pytest.mark.anyio
 async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    class FakePool:
-        def __init__(self):
-            self.closed = False
-
-        async def enqueue_job(self, *args, **kwargs):
-            class J:
-                job_id = "fake-job-1"
-
-            return J()
-
-        async def aclose(self):
-            self.closed = True
 
     async def fake_create_pool(*args, **kwargs):
+        class FakePool:
+            def __init__(self):
+                self.closed = False
+
+            async def enqueue_job(self, *args, **kwargs):
+                class J:
+                    job_id = "fake-job-1"
+
+                return J()
+
+            async def aclose(self):
+                self.closed = True
+
         return FakePool()
 
     monkeypatch.setattr("app.services.job_service.create_pool", fake_create_pool)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
+    class FakeAsyncSession:
+        def __init__(self, existing_chars):
+            self.existing_chars = existing_chars
 
-    assert r.status_code == 200
-    assert r.json().get("job_id") == "fake-job-1"
+        async def execute(self, stmt):
+            class FakeResult:
+                def __init__(self, chars):
+                    self.chars = chars
+
+                def fetchall(self):
+                    return [(models.Kanji(char=c),) for c in self.chars]
+
+            # Extract the characters being queried from the statement
+            queried_chars = stmt._whereclause.right.value
+            found_chars = [c for c in queried_chars if c in self.existing_chars]
+            return FakeResult(found_chars)
+
+    # dependency override
+    async def fake_get_db() -> AsyncGenerator[Any, Any]:
+        yield FakeAsyncSession(existing_chars={"山", "田", "太", "郎"})
+
+    app.dependency_overrides[db_module.get_db] = fake_get_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            r = await ac.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
+        assert r.status_code == 200
+        assert r.json().get("job_id") == "fake-job-1"
+    finally:
+        app.dependency_overrides.pop(db_module.get_db, None)
 
 
 @pytest.mark.anyio

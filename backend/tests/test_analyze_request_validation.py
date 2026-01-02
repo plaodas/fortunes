@@ -41,7 +41,7 @@ def test_birth_hour_out_of_range():
 
 # kanjiテーブルの文字存在確認ロジックのテスト
 def test_validate_kanji_characters():
-    class FakeDBSession:
+    class FakeAsyncSession:
         def __init__(self, existing_chars):
             self.existing_chars = existing_chars
 
@@ -63,7 +63,7 @@ def test_validate_kanji_characters():
             found_chars = [c for c in queried_chars if c in self.existing_chars]
             return FakeResult(found_chars)
 
-    fake_db_session = FakeDBSession(existing_chars={"山", "田", "太", "郎"})
+    fake_db_session = FakeAsyncSession(existing_chars={"山", "田", "太", "郎"})
 
     import asyncio
 

@@ -64,11 +64,13 @@ async def test_get_analyses_empty():
         yield FakeAsyncSession(query_result=[])
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.get(URL_PREFIX + "/analyses")
-    assert r.status_code == 200
-    assert r.json() == []
-    app.dependency_overrides.clear()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            r = await ac.get(URL_PREFIX + "/analyses")
+        assert r.status_code == 200
+        assert r.json() == []
+    finally:
+        app.dependency_overrides.pop(db_module.get_db, None)
 
 
 @pytest.mark.anyio
@@ -77,11 +79,13 @@ async def test_delete_analysis_not_found():
         yield FakeAsyncSession(query_result=None)
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.delete(URL_PREFIX + "/analyses/123")
-    assert r.status_code == 200
-    assert r.json() == {"status": "not found"}
-    app.dependency_overrides.clear()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            r = await ac.delete(URL_PREFIX + "/analyses/123")
+        assert r.status_code == 200
+        assert r.json() == {"status": "not found"}
+    finally:
+        app.dependency_overrides.pop(db_module.get_db, None)
 
 
 @pytest.mark.anyio
@@ -93,8 +97,10 @@ async def test_delete_analysis_deleted():
         yield FakeAsyncSession(query_result=[fake_obj])
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.delete(URL_PREFIX + "/analyses/1")
-    assert r.status_code == 200
-    assert r.json() == {"status": "deleted"}
-    app.dependency_overrides.clear()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            r = await ac.delete(URL_PREFIX + "/analyses/1")
+        assert r.status_code == 200
+        assert r.json() == {"status": "deleted"}
+    finally:
+        app.dependency_overrides.pop(db_module.get_db, None)
