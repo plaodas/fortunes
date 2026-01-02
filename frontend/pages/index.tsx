@@ -128,6 +128,19 @@ export default function Home(): JSX.Element {
       })
 
       if (!enqueueRes.ok) {
+        // If backend returns 422, show the detail field to the user as-is
+        if (enqueueRes.status === 422) {
+          try {
+            const data: any = await enqueueRes.json()
+            const detail = data?.detail ?? JSON.stringify(data)
+            alert(detail)
+            setLoading(false)
+            return
+          } catch (e) {
+            // fall through to generic handling
+          }
+        }
+
         const text = await enqueueRes.text()
         console.warn('enqueue failed', text)
         throw new Error(text || 'enqueue failed')
