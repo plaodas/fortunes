@@ -13,7 +13,6 @@ URL_PREFIX = "/api/v1"
 
 @pytest.mark.anyio
 async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
-
     async def fake_create_pool(*args, **kwargs):
         class FakePool:
             def __init__(self):
