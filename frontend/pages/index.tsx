@@ -5,6 +5,7 @@ import FiveElementChart from '../components/FiveElementChart'
 import FiveGridRadarChart from '../components/FiveGridRadarChart'
 import MeishikiCards from '../components/MeishikiCards'
 import TextWithBr from '../components/TextWithBr'
+import TimeZoneSelector from '../components/TimeZoneSelector'
 
 type Meishiki = {
   year?: string
@@ -48,6 +49,7 @@ type AnalysisOut = {
   name: string
   birth_date: string
   birth_hour: number
+  birth_tz: string
   result_birth: BirthAnalysis
   result_name: NameAnalysis
   summary: string
@@ -67,22 +69,39 @@ export default function Home(): JSX.Element {
   const [history, setHistory] = useState<AnalysisOut[]>([])
   const [selected, setSelected] = useState<AnalysisOut | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
+  const [birthTz, setBirthTz] = useState<string>('Asia/Tokyo')
 
   const isFormValid = !nameSeiError && !nameMeiError && !dateError && name_sei.trim().length > 0 && name_mei.trim().length > 0
 
   useEffect(() => {
     fetchHistory()
   }, [])
+  // set client timezone after mount to avoid SSR/client mismatch
+  useEffect(() => {
+    if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions?.().timeZone
+        if (tz) setBirthTz(tz)
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [])
   function runValidation() {
     // name: at least 2 characters
-    if (name_sei.trim().length === 0) {
+    const name_sei_length = name_sei.trim().length
+    if (name_sei_length === 0) {
       setNameSeiError('姓を入力してください')
+    } else if (name_sei_length > 50) {
+      setNameSeiError('姓は50文字以内で入力してください')
     } else {
       setNameSeiError(null)
     }
-
-    if (name_mei.trim().length === 0) {
+    const name_mei_length = name_mei.trim().length
+    if (name_mei_length === 0) {
       setNameMeiError('名を入力してください')
+    } else if (name_mei_length > 50) {
+      setNameMeiError('名は50文字以内で入力してください')
     } else {
       setNameMeiError(null)
     }
@@ -107,8 +126,8 @@ export default function Home(): JSX.Element {
     e.preventDefault()
 
     // synchronous local validation to decide whether to submit
-    const nameSeiValid = name_sei.trim().length > 0
-    const nameMeiValid = name_mei.trim().length > 0
+    const nameSeiValid = name_sei.trim().length > 0 && name_sei.trim().length <= 50
+    const nameMeiValid = name_mei.trim().length > 0 && name_mei.trim().length <= 50
     const parsed = Date.parse(date)
     const dateValid = !isNaN(parsed) && parsed <= Date.now()
 
@@ -124,7 +143,7 @@ export default function Home(): JSX.Element {
       const enqueueRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/analyze/enqueue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour) }),
+        body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour), birth_tz: birthTz }),
       })
 
       if (!enqueueRes.ok) {
@@ -303,6 +322,7 @@ export default function Home(): JSX.Element {
                 ))}
               </select>
             </div>
+            <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />
             <div className="form-action" style={{ alignSelf: 'end' }}>
               <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定する</button>
             </div>
@@ -361,7 +381,7 @@ export default function Home(): JSX.Element {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong>{h.name}</strong>
-                    <div className="muted">{h.birth_date} · {h.birth_hour}時生まれ</div>
+                    <div className="muted">{h.birth_date} · {h.birth_hour}時({h.birth_tz}) 生まれ </div>
                   </div>
                 </div>
                 <div className="summary">
@@ -375,7 +395,7 @@ export default function Home(): JSX.Element {
       {selected && (
         <Modal title={<>
           <div>{selected.name}</div>
-          <div className="muted">{selected.birth_date} · {selected.birth_hour}時生まれ</div>
+          <div className="muted">{selected.birth_date} · {selected.birth_hour}時({selected.birth_tz}) 生まれ</div>
         </>} onClose={() => setSelected(null)}>
           <div className="meishiki-cards">
             <MeishikiCards analysis={selected.result_birth?.meishiki} />

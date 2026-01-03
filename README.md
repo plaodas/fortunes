@@ -93,11 +93,18 @@ flowchart TD
 docker compose up --build -d
 
 # DBのマイグレーション
-PYTHONPATH=./backend python backend/manage_migrate.py # テーブル作成
 # "$DATABASE_URL"はご自身の環境に合わせて修正してください
-psql "$DATABASE_URL" -f backend/migrations/kanji_data.dump.sql # 漢字データ
+DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
+psql -v -d "$DATABASE_URL" -f backend/migrations/init.sql
 
+# 漢字データ
+BACKUP_PATH="backend/migrations/kanji.dump"
+pg_restore -v -d "$DATABASE_URL" --clean --no-owner --no-privileges "$BACKUP_PATH"
 ```
+PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja_JP.UTF-8'で指定。
+誕生日時は内部でUTCとして保存し、指定されたtimezoneに戻して返しています。
+
+
 ### ブラウザアクセス
 
 `http://localhost:3000`
@@ -192,8 +199,14 @@ job処理時間の95パーセンタイル > 30s
 <!-- 分散トレーシング: OpenTelemetry + Jaeger（LLM呼び出しや DB クエリの遅延調査に有効）。
 サンプル: opentelemetry-instrumentation-fastapi を導入して自動計測。 -->
 
-<!-- ### 永続データ管理 / バックアップ: -->
+### 永続データ管理 / バックアップ:
+```bash
+# バックアップ backupディレクトリにfortunes-ooooooooooooooo.dumpで保存
+scripts/backup_fortunes.sh
 
+# レストア
+scripts/restore_fortunes.sh backup/fortunes-ooooooooooooooo.dump
+```
 <!-- Postgres バックアップ: 定期的な pg_dump / WAL アーカイブ。自動化スクリプト + S3 などへの保存。
 DB マイグレーション管理: alembic 等でスキーマ管理とリリース手順を確立。 -->
 
@@ -221,7 +234,7 @@ $ docker compose exec backend bash -lc "PYTHONPATH=/app  python -m app.worker"
 
 $ curl -X POST http://localhost:8000/analyze/enqueue \
   -H "Content-Type: application/json" \
-  -d '{"name_sei":"太","name_mei":"郎","birth_date":"1990-01-01","birth_hour":12}'
+  -d '{"name_sei":"太","name_mei":"郎","birth_date":"1990-01-01","birth_hour":12, "birth_tz":"Asia/Tokyo"}'
 ```
 
 

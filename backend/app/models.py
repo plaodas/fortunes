@@ -1,6 +1,6 @@
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import JSON, TIMESTAMP, Date, Integer, Text
+from sqlalchemy import JSON, TIMESTAMP, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -12,8 +12,8 @@ class Analysis(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    birth_date: Mapped[date] = mapped_column(Date, nullable=False)
-    birth_hour: Mapped[int] = mapped_column(Integer, nullable=False)
+    birth_datetime: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    birth_tz: Mapped[str] = mapped_column(Text, nullable=False)
     result_birth: Mapped[dict] = mapped_column(JSON, nullable=False)
     result_name: Mapped[dict] = mapped_column(JSON, nullable=False)
     summary: Mapped[str | None] = mapped_column(Text)
