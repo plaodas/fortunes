@@ -150,11 +150,13 @@ export default function Home(): JSX.Element {
       // poll job status until complete (or timeout)
       const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const timeoutMs = 300_000 // 5 minutes
+      const intervalMs = 5_000 // 5 seconds
+
       const start = Date.now()
       let finalResult: any = null
 
       while (Date.now() - start < timeoutMs) {
-        await new Promise((r) => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, intervalMs))
         try {
           const st = await fetch(`${apiBase}/jobs/${job_id}`)
           if (!st.ok) {
@@ -166,7 +168,6 @@ export default function Home(): JSX.Element {
           const status = String(body.status)
           if (status.includes('complete')) {
             finalResult = body.result
-            console.log('job complete', finalResult)
             break
           }
         } catch (e) {

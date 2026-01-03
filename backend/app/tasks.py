@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from app import db, models
@@ -24,9 +25,10 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
 
     Returns a dict summary for convenience.
     """
-    # build datetime and run sync CPU-bound parts
-    birth_date_obj = __import__("datetime").datetime.fromisoformat(birth_date).date()
-    birth_dt = __import__("datetime").datetime.combine(birth_date_obj, __import__("datetime").datetime.min.time()).replace(hour=birth_hour)
+    print(f"process_analysis started: name_sei={name_sei}, name_mei={name_mei}, birth_date={birth_date}, birth_hour={birth_hour}")
+
+    # birth_date(YYYY-MM-dd) + birth_hour -> datetime
+    birth_dt = datetime.fromisoformat(f"{birth_date}T{birth_hour:02}:00:00")
 
     meishiki = get_meishiki(dt=birth_dt)
     gogyo_balance = calc_wuxing_balance(meishiki)
@@ -91,7 +93,7 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
             # persist Analysis
             obj = models.Analysis(
                 name=name_sei + " " + name_mei,
-                birth_date=birth_date_obj,
+                birth_date=birth_dt.date(),  # SQLAlchemyではDate型として保存
                 birth_hour=birth_hour,
                 result_birth=birth_analysis,
                 result_name=name_analysis,

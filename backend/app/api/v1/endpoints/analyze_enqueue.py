@@ -20,7 +20,7 @@ async def analyze_enqueue(req: AnalyzeRequest, db: AsyncSession = get_db) -> dic
     job = await job_service.enqueue_analysis(
         req.name_sei,
         req.name_mei,
-        req.birth_date,
+        req.birth_date.isoformat(),  # ArqはRedisにジョブ引数をシリアライズして保存するので、"YYYY-MM-DD"形式の文字列として渡す（AnalyzeRequestは日付のバリデーションのためにdate型指定）
         int(req.birth_hour),
     )
     if job is None:
