@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any, AsyncGenerator
 
 import pytest
@@ -186,7 +187,8 @@ def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> N
 
 @pytest.mark.anyio
 async def test_process_analysis_creates_and_returns_id(fake_llm, fake_session_local) -> None:
-    res = await tasks_module.process_analysis({}, "太", "郎", "1990-01-01", 12)
+    date_obj = date.fromisoformat("1990-01-01")
+    res = await tasks_module.process_analysis({}, "太", "郎", date_obj, 12)
 
     assert isinstance(res, dict)
     assert res.get("id") == 99999
