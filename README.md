@@ -1,14 +1,16 @@
+[![Frontend Tests](https://github.com/plaodas/fortunes/actions/workflows/frontend-tests.yml/badge.svg)](https://github.com/plaodas/fortunes/actions/workflows/frontend-tests.yml) [![Backend Tests](https://github.com/plaodas/fortunes/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/plaodas/fortunes/actions/workflows/backend-tests.yml)
+
 # 🌟四柱推命と姓名判断から人生のブループリントを読み解くアプリ (MVP)
 
-# 概要
+## 概要
 四柱推命と姓名判断からあなたの人生のブループリントを物語風に読み解くアプリです。
 
 「名前」、「生まれた年月日時」を入力すると命式、五行、五格が計算されて大まかな人生の流れが桃源郷の旅路を模した物語で表現されます。
 
 算出は一般的なものを更に簡略化しています。算出した値からLLMで鑑定文を作成します。
 
-AI駆動開発の練習用です。
-認証、厳密なバリデーション、ログ監視などは未実装です。
+AI駆動開発の練習用として不慣れなPython／FastAPI、React/Next.jsで作成しています。
+認証、ログ監視などは未実装です。
 
 
 ### 画面イメージ
@@ -17,7 +19,7 @@ AI駆動開発の練習用です。
 
 <img src="images/preview6.png" height="400"><img src="images/preview7.png" height="400">
 
-# 構成
+## 構成
 コンテナは以下のような構成です
 - frontend: node, react, next
 - backend: python, fastapi
@@ -110,17 +112,6 @@ PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja
 `http://localhost:3000`
 で画面が表示されます
 
-### LLMのモデル
-
-鑑定文作成とサマリ作成で使用するモデルを分けています。
-- 鑑定文作成： gemini-2.5-flash
-- サマリ作成： gemini-2.5-flash-lite
-
-鑑定文は表現力が必要なので、`gemini-2.5-pro`やOpenAIの`GPT-4o`のようなモデルがおすすめです。この環境では無料枠があるgemini-2.5-flashを使用しています。
-サマリ作成は表現力が問われないので、`gemini-2.5-flash-lite`のような軽くて安価なモデルがよいです。
-
-プロンプトも[鑑定文](backend/app/services/prompts/template_life_analysis.py)と[サマリ](backend/app/services/prompts/template_life_analysis_summary.py)で分けています
-
 
 ### 開発環境用ツールのインストール
 - リンター、コードフォーマッターを使用しています
@@ -129,7 +120,9 @@ PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja
 pip install -r dev-requirements.txt
 ```
 
+## その他・メモ
 ### TEST
+
 テストコマンド
 
 ```bash
@@ -142,6 +135,17 @@ uvicornとsqlalchemyのdebugを有効化
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
 ```
+
+### LLMのモデル
+
+鑑定文作成とサマリ作成で使用するモデルを分けています。
+- 鑑定文作成： gemini-2.5-flash
+- サマリ作成： gemini-2.5-flash-lite
+
+鑑定文は表現力が必要なので、`gemini-2.5-pro`やOpenAIの`GPT-4o`のようなモデルがおすすめです。この環境では無料枠があるgemini-2.5-flashを使用しています。
+サマリ作成は表現力が問われないので、`gemini-2.5-flash-lite`のような軽くて安価なモデルがよいです。
+
+プロンプトも[鑑定文](backend/app/services/prompts/template_life_analysis.py)と[サマリ](backend/app/services/prompts/template_life_analysis_summary.py)で分けています
 
 
 
