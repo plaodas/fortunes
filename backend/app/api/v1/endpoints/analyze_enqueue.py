@@ -22,6 +22,7 @@ async def analyze_enqueue(req: AnalyzeRequest, db: AsyncSession = get_db) -> dic
         req.name_mei,
         req.birth_date.isoformat(),  # ArqはRedisにジョブ引数をシリアライズして保存するので、"YYYY-MM-DD"形式の文字列として渡す（AnalyzeRequestは日付のバリデーションのためにdate型指定）
         int(req.birth_hour),
+        req.birth_tz,
     )
     if job is None:
         raise HTTPException(status_code=500, detail="failed to enqueue job")

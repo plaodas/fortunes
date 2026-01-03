@@ -21,24 +21,30 @@ class FakeResult:
         # rows: None | single object | list/tuple of objects
         self._rows = rows
 
-    def scalars(self) -> object:
-        class S:
-            def __init__(self, rows):
-                self._rows = rows
-
-            def all(self) -> list:
-                if self._rows is None:
-                    return []
-                return list(self._rows) if isinstance(self._rows, (list, tuple)) else [self._rows]
-
-        return S(self._rows)
-
     def scalar_one_or_none(self) -> object | None:
         if self._rows is None:
             return None
         if isinstance(self._rows, (list, tuple)):
             return self._rows[0] if self._rows else None
         return self._rows
+
+    def __iter__(self):
+        # Support iteration like SQLAlchemy Result where each item has a `_mapping` attribute
+        if not self._rows:
+            return iter(())
+
+        rows = self._rows if isinstance(self._rows, (list, tuple)) else [self._rows]
+
+        def to_row_obj(val):
+            if hasattr(val, "_mapping"):
+                return val
+            if isinstance(val, dict):
+                return type("_Row", (), {"_mapping": val})()
+            # fallback: try to use __dict__ for attribute-based objects
+            mapping = getattr(val, "__dict__", {}) or {}
+            return type("_Row", (), {"_mapping": mapping})()
+
+        return (to_row_obj(v) for v in rows)
 
 
 class FakeAsyncSession:

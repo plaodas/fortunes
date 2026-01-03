@@ -9,6 +9,7 @@ class AnalysisOut(BaseModel):
     name: str
     birth_date: date  # ← date 型で受ける
     birth_hour: int
+    birth_tz: str
     result_name: dict[str, Any]
     result_birth: dict[str, Any]
     summary: str | None

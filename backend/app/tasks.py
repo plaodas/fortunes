@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from app import db, models
 from app.services import litellm_adapter
@@ -20,15 +21,19 @@ from app.services.prompts.template_life_analysis_summary import (
 )
 
 
-async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: str, birth_hour: int) -> dict[str, Any]:
+async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: str, birth_hour: int, birth_tz: str = "Asia/Tokyo") -> dict[str, Any]:
     """Arq worker task: perform the analysis and persist result.
 
     Returns a dict summary for convenience.
     """
-    print(f"process_analysis started: name_sei={name_sei}, name_mei={name_mei}, birth_date={birth_date}, birth_hour={birth_hour}")
-
-    # birth_date(YYYY-MM-dd) + birth_hour -> datetime
-    birth_dt = datetime.fromisoformat(f"{birth_date}T{birth_hour:02}:00:00")
+    # birth_date(YYYY-MM-dd) + birth_hour
+    birth_date_obj = date.fromisoformat(birth_date)
+    # datetime 🌟タイムゾーンの扱いに注意が必要
+    try:
+        tz = ZoneInfo(birth_tz)
+    except Exception:
+        tz = ZoneInfo("Asia/Tokyo")
+    birth_dt = datetime(year=birth_date_obj.year, month=birth_date_obj.month, day=birth_date_obj.day, hour=birth_hour, tzinfo=tz)
 
     meishiki = get_meishiki(dt=birth_dt)
     gogyo_balance = calc_wuxing_balance(meishiki)
@@ -93,8 +98,8 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
             # persist Analysis
             obj = models.Analysis(
                 name=name_sei + " " + name_mei,
-                birth_date=birth_dt.date(),  # SQLAlchemyではDate型として保存
-                birth_hour=birth_hour,
+                birth_datetime=birth_dt,
+                birth_tz=birth_tz,
                 result_birth=birth_analysis,
                 result_name=name_analysis,
                 summary=llm_response_summary.response_text if llm_response_summary else None,

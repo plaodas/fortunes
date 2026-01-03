@@ -50,6 +50,7 @@ __pypackages__/
 *.db
 *.bak
 *.backup
+backups/
 *.orig
 *.rej
 *.tmp
@@ -63,7 +64,6 @@ __pypackages__/
 *.iml
 *.ipr
 *.iws
-*.log
 *.out
 *.class
 *.war
