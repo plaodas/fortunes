@@ -90,14 +90,16 @@ flowchart TD
 3. `GEMINI_API_KEY=`に `1.` で取得したキーをコピーして貼り付けます
 
 ### コンテナ起動、マイグレーション
+wsl(ubuntu)の場合
 ```bash
 # from repo root
 docker compose up --build -d
 
 # DBのマイグレーション
 # "$DATABASE_URL"はご自身の環境に合わせて修正してください
-DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
-psql -v -d "$DATABASE_URL" -f backend/migrations/init.sql
+export DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
+psql -d "$DATABASE_URL" -f backend/migrations/init.sql
+
 
 # 漢字データ
 BACKUP_PATH="backend/migrations/kanji.dump"
