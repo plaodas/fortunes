@@ -16,7 +16,7 @@ elif "psycopg2" in DATABASE_URL and "asyncpg" not in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.replace("psycopg2", "asyncpg")
 
 # Async engine and sessionmaker
-engine = create_async_engine(DATABASE_URL, future=True, echo=(os.getenv("SQLALCHEMY_ECHO") == "1"))
+engine = create_async_engine(DATABASE_URL, future=True, echo=(os.getenv("SQLALCHEMY_ECHO") == "1"), pool_size=5, max_overflow=0, pool_pre_ping=True)
 SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 

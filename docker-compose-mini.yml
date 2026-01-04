@@ -1,0 +1,148 @@
+# host os でスワップ2GB有効にすることを推奨
+# sudo fallocate -l 2G /swapfile
+# sudo chmod 600 /swapfile
+# sudo mkswap /swapfile
+# sudo swapon /swapfile
+# sudo sh -c 'echo "/swapfile swap swap defaults 0 0" >> /etc/fstab'
+services:
+  reverse-proxy:
+    image: traefik:v2.10
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.email=email@something-domain.com"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./data/letsencrypt:/letsencrypt"
+    mem_limit: 50m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+
+  frontend:
+    build: ./docker/frontend
+    volumes:
+      - ./frontend:/app
+      - next_build:/app/.next
+      - /app/node_modules
+    ports:
+      - 3000:3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=le"
+    mem_limit: 300m
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: always
+
+  backend:
+    build: ./docker/backend
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true" # /api で FastAPI にルーティング
+      - "traefik.http.routers.backend.rule=Host(`your-domain.com`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=le"
+      - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api/v1"
+      - "traefik.http.routers.backend.middlewares=backend-strip"
+    mem_limit: 300m
+    volumes:
+      - ./backend:/app
+    ports:
+      - 8000:8000
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      - db
+      - redis
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: always
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build: ./docker/backend
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    command: python -m app.worker
+    mem_limit: 150m
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      - db
+      - redis
+    restart: always
+
+  redis:
+    image: redis:7
+    command: [ "redis-server", "--maxmemory", "50mb", "--maxmemory-policy", "allkeys-lru" ]
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    mem_limit: 60m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: always
+
+  db:
+    build: ./docker/postgres
+    environment:
+      # POSTGRES_DB: fortunes
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - 5432:5432
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    mem_limit: 200m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: always
+
+volumes:
+  db_data:
+  next_build:
+  redis_data:
