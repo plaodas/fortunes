@@ -20,7 +20,7 @@ services:
 
   backend:
     build:
-      context: ./docker/backend
+      context: ./backend
       dockerfile: Dockerfile.dev # ./docker/backend/Dockerfile.dev を使う
       target: web
     env_file:
@@ -41,7 +41,7 @@ services:
 
   worker:
     build:
-      context: ./docker/backend
+      context: ./backend
       dockerfile: Dockerfile.dev # ./docker/backend/Dockerfile.dev を使う
       target: worker
     env_file:
