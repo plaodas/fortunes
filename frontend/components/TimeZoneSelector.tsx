@@ -29,7 +29,7 @@ export default function TimeZoneSelector({ birthTz, setBirthTz }: { birthTz: str
 
   return (
     <div className="form-row">
-      <label htmlFor="birth-tz">タイムゾーン</label>
+      <label htmlFor="birth-tz">生まれた場所</label>
       <select
         id="birth-tz"
         className="input"

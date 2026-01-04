@@ -10,7 +10,7 @@ from .db import Base
 class Analysis(Base):
     __tablename__ = "analyses"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     birth_datetime: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     birth_tz: Mapped[str] = mapped_column(Text, nullable=False)
