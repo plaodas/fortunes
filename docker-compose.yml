@@ -1,6 +1,8 @@
 services:
   db:
-    build: ./docker/postgres
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile.dev # ./docker/postgres/Dockerfile.dev を使う
     environment:
       # POSTGRES_DB: fortunes
       POSTGRES_USER: postgres
@@ -17,7 +19,10 @@ services:
         max-file: "5"
 
   backend:
-    build: ./backend
+    build:
+      context: ./docker/backend
+      dockerfile: Dockerfile.dev # ./docker/backend/Dockerfile.dev を使う
+      target: web
     env_file:
       - .env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -35,7 +40,10 @@ services:
         max-file: "5"
 
   worker:
-    build: ./backend
+    build:
+      context: ./docker/backend
+      dockerfile: Dockerfile.dev # ./docker/backend/Dockerfile.dev を使う
+      target: worker
     env_file:
       - .env
     volumes:
@@ -80,7 +88,5 @@ services:
 
 volumes:
   db_data:
-
   next_build:
-
   redis_data:
