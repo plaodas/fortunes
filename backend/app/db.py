@@ -12,8 +12,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", default)
 # Normalize common postgres schemes to asyncpg form so both Docker and local URLs work.
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-elif "psycopg2" in DATABASE_URL and "asyncpg" not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("psycopg2", "asyncpg")
 
 # Async engine and sessionmaker
 engine = create_async_engine(DATABASE_URL, future=True, echo=(os.getenv("SQLALCHEMY_ECHO") == "1"), pool_size=5, max_overflow=0, pool_pre_ping=True)

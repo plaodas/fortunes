@@ -1,27 +1,35 @@
-FROM python:3.11-slim
-
+# Builder stage: build deps (残さない)
+FROM python:3.11-slim AS builder
 WORKDIR /app
 
-# Python の最適化
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential gcc libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# 必要な OS パッケージだけ入れる
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# 依存関係を先にコピー（キャッシュ効率UP）
 COPY requirements.txt .
+# 仮想環境を作って依存をインストール
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir -U pip && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# 軽量インストール
-RUN pip install --no-cache-dir -r requirements.txt
-
-# アプリ本体をコピー
 COPY . /app
 
-EXPOSE 8000
+# Final stage: 軽量イメージにビルド成果だけコピー
+FROM python:3.11-slim
 
-# Uvicorn を軽量設定で起動
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/opt/venv/bin:$PATH
+
+RUN useradd -m appuser
+WORKDIR /app
+# builder の仮想環境とアプリをコピー（ビルドツールは含まれない）
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app /app
+
+# 権限変更
+RUN chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--log-level", "warning"]

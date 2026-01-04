@@ -27,14 +27,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    restart: always
+    restart: unless-stopped
 
   frontend:
     build: ./docker/frontend
-    volumes:
-      - ./frontend:/app
-      - next_build:/app/.next
-      - /app/node_modules
+    image: fortunes-frontend:latest
     ports:
       - 3000:3000
     labels:
@@ -42,7 +39,7 @@ services:
       - "traefik.http.routers.frontend.rule=Host(`your-domain.com`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=le"
-    mem_limit: 300m
+    mem_limit: 250m
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
@@ -53,10 +50,12 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    restart: always
+    restart: unless-stopped
 
   backend:
-    build: ./docker/backend
+    build:
+      context: ./docker/backend
+    image: fortunes-backend:latest
     env_file:
       - .env
     labels:
@@ -66,9 +65,8 @@ services:
       - "traefik.http.routers.backend.tls.certresolver=le"
       - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api/v1"
       - "traefik.http.routers.backend.middlewares=backend-strip"
-    mem_limit: 300m
-    volumes:
-      - ./backend:/app
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+    mem_limit: 250m
     ports:
       - 8000:8000
     environment:
@@ -81,27 +79,33 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    restart: always
+    restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/health" ]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 10s
 
   worker:
-    build: ./docker/backend
+    image: fortunes-backend:latest
     env_file:
       - .env
-    volumes:
-      - ./backend:/app
     command: python -m app.worker
     mem_limit: 150m
     environment:
       PYTHONPATH: /app
     depends_on:
+      - backend
       - db
       - redis
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/ready" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   redis:
     image: redis:7
@@ -116,7 +120,13 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   db:
     build: ./docker/postgres
@@ -140,9 +150,14 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d fortunes" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   db_data:
-  next_build:
   redis_data:
