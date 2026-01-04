@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import JSON, TIMESTAMP, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column  # mypy の推論を利用するためmapped_columnを使用
 from sqlalchemy.sql import func
 
 from .db import Base
