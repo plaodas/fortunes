@@ -97,9 +97,8 @@ docker compose up --build -d
 
 # DBのマイグレーション
 # "$DATABASE_URL"はご自身の環境に合わせて修正してください
-export DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
+DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
 psql -d "$DATABASE_URL" -f backend/migrations/init.sql
-
 
 # 漢字データ
 BACKUP_PATH="backend/migrations/kanji.dump"
