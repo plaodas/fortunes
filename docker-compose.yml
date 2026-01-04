@@ -4,9 +4,9 @@ services:
       context: ./docker/postgres
       dockerfile: Dockerfile.dev # ./docker/postgres/Dockerfile.dev を使う
     environment:
-      # POSTGRES_DB: fortunes
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      # POSTGRES_DB: ${POSTGRES_DB:-fortunes}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - 5432:5432
     volumes:

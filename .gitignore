@@ -94,6 +94,7 @@ desktop.ini
 *.code-workspace
 *.env
 .env
+.env.dev
 .env.local
 .env.*.local
 .secret.local

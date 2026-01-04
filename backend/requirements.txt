@@ -4,7 +4,7 @@ uvicorn[standard]==0.23.1
 pydantic==2.12.5
 # Pin SQLAlchemy to a 2.0.x release compatible with the environment
 sqlalchemy==2.0.45
-psycopg2-binary==2.9.6
+psycopg2-binary==2.9.6 # 外部の管理ツール、ローカルの同期クライアントなどのために保留
 asyncpg==0.31.0
 pytest==9.0.2
 # httpx pin was causing conflicts between litellm and google-genai.

@@ -1,3 +1,4 @@
+## Docker Compose Demo 環境用
 # host os でスワップ2GB有効にすることを推奨
 # sudo fallocate -l 2G /swapfile
 # sudo chmod 600 /swapfile
@@ -30,7 +31,9 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./docker/frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.demo
     image: fortunes-frontend:latest
     ports:
       - 3000:3000
@@ -54,7 +57,8 @@ services:
 
   backend:
     build:
-      context: ./docker/backend
+      context: ./backend
+      dockerfile: Dockerfile.demo
     image: fortunes-backend:latest
     env_file:
       - .env
@@ -129,11 +133,13 @@ services:
       start_period: 5s
 
   db:
-    build: ./docker/postgres
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile.demo
     environment:
-      # POSTGRES_DB: fortunes
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      # POSTGRES_DB: ${POSTGRES_DB:-fortunes}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - 5432:5432
     command:
