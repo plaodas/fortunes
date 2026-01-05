@@ -88,7 +88,8 @@ jobs:
           # install a small client to check readiness
           sudo apt-get update && sudo apt-get install -y postgresql-client
           set -x
-          for i in {1..30}; do
+          # Increase attempts and check container health status as a fallback
+          for i in {1..60}; do
             echo "Attempt $i: checking with pg_isready..."
             if pg_isready -h localhost -p 5432 -U postgres; then
               echo "pg_isready reports Postgres is ready"
@@ -101,7 +102,20 @@ jobs:
             else
               echo "psql connection failed (attempt $i)"
             fi
-            sleep 1
+            # Check container health status (useful when init scripts restart the server)
+            CID=$(docker ps -a --filter ancestor=postgres:15 -q | head -n1)
+            if [ -n "$CID" ]; then
+              HEALTH=$(docker inspect --format '{{.State.Health.Status}}' "$CID" 2>/dev/null || true)
+              echo "Container $CID health=$HEALTH"
+              if [ "$HEALTH" = "healthy" ]; then
+                echo "Container reports healthy; trying psql once more"
+                if PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
+                  echo "psql connection successful after container healthy"
+                  break
+                fi
+              fi
+            fi
+            sleep 2
           done
           # Final verification and diagnostics if still not ready
           if ! pg_isready -h localhost -p 5432 -U postgres; then
