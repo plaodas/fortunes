@@ -23,14 +23,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('dev-requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/dev-requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install pinned tools
         run: |
           python -m pip install --upgrade pip
-          pip install -r dev-requirements.txt
+          pip install -r backend/dev-requirements.txt
 
       - name: Run ruff format and fail if it changes files
         run: |
