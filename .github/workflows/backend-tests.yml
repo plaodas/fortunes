@@ -1,10 +1,12 @@
+# yamllint disable-rule: truthy, line-length
+---
 name: Backend Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint:
@@ -12,9 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
@@ -37,7 +37,11 @@ jobs:
           # apply automatic formatting
           ruff format .
           # if ruff modified files, the working tree will have diffs; fail the job
-          git --no-pager diff --exit-code || (echo "ruff format modified files; run 'ruff format .' locally and commit the changes" && exit 1)
+          git --no-pager diff --exit-code || {
+            echo "ruff format modified files."
+            echo "Run 'ruff format .' locally and commit the changes."
+            exit 1
+          }
 
       - name: isort check
         run: isort --check-only .
@@ -59,7 +63,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: fortunes
         options: >-
-          --health-cmd "pg_isready -h localhost -p 5432 -U postgres"
+          --health-cmd 'pg_isready -h localhost -p 5432 -U postgres'
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -88,48 +92,42 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
         run: |
           # install a small client to check readiness
-          sudo apt-get update && sudo apt-get install -y postgresql-client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
           set -x
-          # Increase attempts and check container health status as a fallback
+          # Increase attempts and check container health status
+          PP="PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
           for i in {1..60}; do
-            echo "Attempt $i: checking with pg_isready..."
+            echo "Attempt $i: checking pg_isready"
             if pg_isready -h localhost -p 5432 -U postgres; then
-              echo "pg_isready reports Postgres is ready"
+              echo "pg_isready ok"
               break
             fi
-            echo "pg_isready not ready; trying psql connection test..."
-            if PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
-              echo "psql connection successful"
+            echo "trying psql connection test"
+            if $PP psql -h localhost -U postgres -c '\l' >/dev/null 2>&1; then
+              echo "psql ok"
               break
-            else
-              echo "psql connection failed (attempt $i)"
             fi
-            # Check container health status (useful when init scripts restart the server)
             CID=$(docker ps -a --filter ancestor=postgres:15 -q | head -n1)
             if [ -n "$CID" ]; then
               HEALTH=$(docker inspect --format '{{.State.Health.Status}}' "$CID" 2>/dev/null || true)
               echo "Container $CID health=$HEALTH"
               if [ "$HEALTH" = "healthy" ]; then
-                echo "Container reports healthy; trying psql once more"
-                if PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
-                  echo "psql connection successful after container healthy"
+                if $PP psql -h localhost -U postgres -c '\l' >/dev/null 2>&1; then
+                  echo "psql ok after healthy"
                   break
                 fi
               fi
             fi
             sleep 2
           done
-          # Final verification and diagnostics if still not ready
+          # Final verification
           if ! pg_isready -h localhost -p 5432 -U postgres; then
-            echo "Postgres did not become ready after 30 attempts. Printing diagnostics..."
-            echo "Open TCP listeners:"
+            echo "Postgres did not become ready"
             ss -ltn || true
-            echo "Attempting a final psql connection to show error output:"
-            PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' || true
-            echo "Listing containers:"
-            docker ps -a --format 'ID={{.ID}} Image={{.Image}} Status={{.Status}} Names={{.Names}}' || true
-            echo "Logs for postgres:15 derived containers:"
-            docker ps -a --filter ancestor=postgres:15 -q | xargs -r docker logs --tail 200 || true
+            $PP psql -h localhost -U postgres -c '\l' || true
+            docker ps -a --filter ancestor=postgres:15 -q | \
+              xargs -r docker logs --tail 200 || true
             exit 1
           fi
 
@@ -139,12 +137,18 @@ jobs:
           PYTHONPATH: backend
         run: |
           python backend/manage_migrate.py
-          PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_data.sql -f backend/migrations/sample_kanji.sql
+          PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_data.sql
+          PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_kanji.sql
       - name: Run backend tests (with coverage and junit)
         env:
           PYTHONPATH: backend
         run: |
-          pytest backend/tests -q --junitxml=backend/reports/junit.xml --cov=backend --cov-report=xml:backend/reports/coverage.xml
+          pytest backend/tests -q \
+            --junitxml=backend/reports/junit.xml \
+            --cov=backend \
+            --cov-report=xml:backend/reports/coverage.xml
 
       - name: Upload backend coverage artifact
         if: always()
@@ -161,7 +165,7 @@ jobs:
           path: backend/reports/junit.xml
 
       - name: Annotate backend test results in PR
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request'
         uses: dorny/test-reporter@v2
         with:
           name: backend-tests
