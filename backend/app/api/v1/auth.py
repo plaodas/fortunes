@@ -4,14 +4,22 @@ from datetime import timedelta
 from typing import Literal, Optional, cast
 
 from app import auth
+from app.db import get_db
+from app.services.user_service import create_user
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Restrict samesite to the allowed literal values so type checkers are satisfied.
+CookieSameSite = Literal["lax", "strict", "none"]
+
+
 # Module-level dependency to avoid calling `Depends()` in function defaults (ruff B008)
 oauth2_form = Depends(OAuth2PasswordRequestForm)
+asyncSession = Depends(get_db)
 
 
 class TokenOut(BaseModel):
@@ -19,8 +27,11 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
-# Restrict samesite to the allowed literal values so type checkers are satisfied.
-CookieSameSite = Literal["lax", "strict", "none"]
+class SignupIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    display_name: str | None = None
 
 
 def _resolve_samesite(value: str | None) -> Optional[CookieSameSite]:
@@ -52,6 +63,30 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth
     response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
 
     # Create CSRF token (double-submit). This cookie is readable by JS so frontend can set X-CSRF-Token header.
+    csrf_token = secrets.token_urlsafe(32)
+    response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+async def signup(response: Response, payload: SignupIn, db: AsyncSession = asyncSession):
+    # email is required by the payload type
+    try:
+        user = await create_user(db, username=payload.username, password=payload.password, email=payload.email, display_name=payload.display_name)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
+
+    access_token = auth.create_access_token(subject=user.username)
+    refresh_token = auth.create_refresh_token(subject=user.username)
+
+    cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
+    cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))
+    cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
+
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+
     csrf_token = secrets.token_urlsafe(32)
     response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
 

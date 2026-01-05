@@ -14,6 +14,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Default exempt paths (auth endpoints + docs/openapi)
         # login から CSRF チェックを除外するのは一般的に許容される範囲
         self.exempt_paths = exempt_paths or [
+            "/api/v1/auth/signup",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
