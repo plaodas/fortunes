@@ -21,11 +21,11 @@ export default function LoginPage(): JSX.Element {
             });
 
             if (!res.ok) {
-                setMessage(`Login failed: ${res.status}`);
+                setMessage(`ログインに失敗しました: ${res.status}`);
                 return;
             }
 
-            setMessage("Login succeeded — calling protected endpoint...");
+            setMessage("ログインに成功しました — 保護されたAPIにアクセスします...");
 
             // Read csrf_token cookie (double-submit) and call protected endpoint
             const cookies = (document.cookie || "").split(";").map((c) => c.trim());
@@ -39,27 +39,27 @@ export default function LoginPage(): JSX.Element {
             });
 
             if (!prot.ok) {
-                setMessage(`Protected call failed: ${prot.status}`);
+                setMessage(`保護されたAPIの呼び出しに失敗しました: ${prot.status}`);
                 return;
             }
 
             const data = await prot.json();
-            setMessage("Protected call succeeded: " + JSON.stringify(data));
+            setMessage("保護されたAPIの呼び出しに成功しました: " + JSON.stringify(data));
         } catch (err) {
-            setMessage("Network error");
+            setMessage("ネットワークエラー");
         }
     }
 
     return (
         <div style={{ padding: 24, maxWidth: 420, margin: "0 auto" }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Login</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>ログイン</h1>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
-                <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
-                <button type="submit">Login</button>
+                <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
+                <button type="submit">ログイン</button>
             </form>
             <div style={{ marginTop: 12 }}>
-                <a href="/signup">Create an account</a>
+                <a href="/signup">アカウント作成</a>
             </div>
             {message && <p style={{ marginTop: 16 }}>{message}</p>}
         </div>
