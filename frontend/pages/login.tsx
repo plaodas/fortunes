@@ -58,6 +58,9 @@ export default function LoginPage(): JSX.Element {
                 <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
                 <button type="submit">Login</button>
             </form>
+            <div style={{ marginTop: 12 }}>
+                <a href="/signup">Create an account</a>
+            </div>
             {message && <p style={{ marginTop: 16 }}>{message}</p>}
         </div>
     );
