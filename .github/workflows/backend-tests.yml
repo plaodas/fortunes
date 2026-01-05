@@ -156,14 +156,6 @@ jobs:
           psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_data.sql
           psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_kanji.sql
 
-      - name: Verify DB tables
-        env:
-          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        run: |
-          echo "Listing public tables to verify migrations"
-          psql -h localhost -U postgres -d fortunes -c "\dt public.*"
-          echo "Checking for \"user\" table existence"
-          psql -h localhost -U postgres -d fortunes -c "SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename='user';"
       - name: Run backend tests (with coverage and junit)
         env:
           PYTHONPATH: backend
