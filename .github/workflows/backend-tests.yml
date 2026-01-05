@@ -83,17 +83,39 @@ jobs:
 
       - name: Wait for Postgres
         env:
-          DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
+          DATABASE_URL: postgresql+asyncpg://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
         run: |
           # install a small client to check readiness
           sudo apt-get update && sudo apt-get install -y postgresql-client
+          set -x
           for i in {1..30}; do
-            pg_isready -h localhost -p 5432 -U postgres && break || sleep 1
+            echo "Attempt $i: checking with pg_isready..."
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "pg_isready reports Postgres is ready"
+              break
+            fi
+            echo "pg_isready not ready; trying psql connection test..."
+            if PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
+              echo "psql connection successful"
+              break
+            else
+              echo "psql connection failed (attempt $i)"
+            fi
+            sleep 1
           done
+          # Final verification and diagnostics if still not ready
+          if ! pg_isready -h localhost -p 5432 -U postgres; then
+            echo "Postgres did not become ready after 30 attempts. Printing diagnostics..."
+            echo "Open TCP listeners:"
+            ss -ltn || true
+            echo "Attempting a final psql connection to show error output:"
+            PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' || true
+            exit 1
+          fi
 
       - name: Run DB migrations
         env:
-          DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
+          DATABASE_URL: postgresql+asyncpg://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
           PYTHONPATH: backend
         run: |
           python backend/manage_migrate.py
