@@ -147,9 +147,9 @@ docker compose up --build -d
 
 ### 開発環境用ツールのインストール
 - リンター、コードフォーマッターを使用しています
-
+pre-commitでコミット時に実行するので、ホストOSで以下のコマンドを実行してインストールしてください
 ```
-pip install -r dev-requirements.txt
+pip install -r backend/dev-requirements.txt
 ```
 
 ## その他・メモ
