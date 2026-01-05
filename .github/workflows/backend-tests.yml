@@ -162,10 +162,10 @@ jobs:
 
       - name: Annotate backend test results in PR
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: backend-tests
           path: backend/reports/junit.xml
-          reporter: junit
+          reporter: python-xunit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
