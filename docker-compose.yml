@@ -30,6 +30,13 @@ services:
       - 8000:8000
     environment:
       PYTHONPATH: /app
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      MAIL_FROM: fortunes@localhost
+      DB_USE_NULLPOOL: true # 開発環境:true / 本番:false(DB_POOL_SIZE/DB_MAX_OVERFLOWが有効になる)
+      DB_POOL_SIZE: 5
+      DB_MAX_OVERFLOW: 0
+
     depends_on:
       - db
       - redis
@@ -80,6 +87,18 @@ services:
       - 6379:6379
     volumes:
       - redis_data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - 1025:1025 # SMTP
+      - 8025:8025 # Web UI
+    restart: unless-stopped
     logging:
       driver: json-file
       options:

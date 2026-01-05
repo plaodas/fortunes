@@ -5,6 +5,7 @@
 # sudo mkswap /swapfile
 # sudo swapon /swapfile
 # sudo sh -c 'echo "/swapfile swap swap defaults 0 0" >> /etc/fstab'
+---
 services:
   reverse-proxy:
     image: traefik:v2.10
@@ -75,6 +76,9 @@ services:
       - 8000:8000
     environment:
       PYTHONPATH: /app
+      DB_USE_NULLPOOL: false # 開発環境:true / 本番:false(DB_POOL_SIZE/DB_MAX_OVERFLOWが有効になる)
+      DB_POOL_SIZE: 5
+      DB_MAX_OVERFLOW: 0
     depends_on:
       - db
       - redis

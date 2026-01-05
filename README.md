@@ -97,7 +97,7 @@ wsl(ubuntu)の場合
 docker compose up --build -d
 
 # DBのマイグレーション
-docker compose exec backend bash -c "python backend/manage_migrate.py"
+docker compose exec backend bash -c "python manage_migrate.py"
 
 DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
 
@@ -116,7 +116,7 @@ PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja
 `http://localhost:3000`
 で画面が表示されます
 
-### 開発: 同一オリジンでの API プロキシ (推奨)
+<!-- ### 開発: 同一オリジンでの API プロキシ (推奨)
 
 開発中は Next.js のリライトでフロントとバックエンドを同一オリジンに見せる構成を推奨します。これによりブラウザの Cookie / CSRF 挙動がシンプルになり、認証まわりのデバッグが容易になります。
 
@@ -142,14 +142,14 @@ docker compose up --build -d
 # 例: POST /api/v1/auth/login の後に GET /api/v1/auth/me を呼ぶ
 ```
 
-セキュリティ注意: 開発中に `HttpOnly` を外したり、`SameSite=None` を無条件で付けると XSS/CSRF リスクが高まるため、本番では適切に HTTPS と `Secure` を有効にしてください。
+セキュリティ注意: 開発中に `HttpOnly` を外したり、`SameSite=None` を無条件で付けると XSS/CSRF リスクが高まるため、本番では適切に HTTPS と `Secure` を有効にしてください。 -->
 
 
 ### 開発環境用ツールのインストール
 - リンター、コードフォーマッターを使用しています
-
+pre-commitでコミット時に実行するので、ホストOSで以下のコマンドを実行してインストールしてください
 ```
-pip install -r dev-requirements.txt
+pip install -r backend/dev-requirements.txt
 ```
 
 ## その他・メモ

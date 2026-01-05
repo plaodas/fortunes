@@ -4,14 +4,24 @@ from datetime import timedelta
 from typing import Literal, Optional, cast
 
 from app import auth
+from app.db import get_db
+from app.services import mailer
+from app.services.user_service import create_user
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Restrict samesite to the allowed literal values so type checkers are satisfied.
+CookieSameSite = Literal["lax", "strict", "none"]
+
+
 # Module-level dependency to avoid calling `Depends()` in function defaults (ruff B008)
 oauth2_form = Depends(OAuth2PasswordRequestForm)
+asyncSession = Depends(get_db)
 
 
 class TokenOut(BaseModel):
@@ -19,8 +29,11 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
-# Restrict samesite to the allowed literal values so type checkers are satisfied.
-CookieSameSite = Literal["lax", "strict", "none"]
+class SignupIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    display_name: str | None = None
 
 
 def _resolve_samesite(value: str | None) -> Optional[CookieSameSite]:
@@ -58,6 +71,43 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+async def signup(response: Response, payload: SignupIn, db: AsyncSession = asyncSession):
+    # email is required by the payload type
+    try:
+        user = await create_user(db, username=payload.username, password=payload.password, email=payload.email, display_name=payload.display_name)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
+
+    access_token = auth.create_access_token(subject=user.username)
+    refresh_token = auth.create_refresh_token(subject=user.username)
+
+    cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
+    cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))
+    cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
+
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+
+    csrf_token = secrets.token_urlsafe(32)
+    response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+
+    # Send confirmation email (non-blocking behavior could be added later)
+    try:
+        # create a short-lived email confirmation token
+        token = auth.create_email_token(subject=user.username)
+        confirm_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000") + f"/confirm-email?token={token}"
+        # payload.email is required by the request model, use it to satisfy static typing
+        mailer.send_confirmation_email(payload.email, confirm_url)
+    except Exception:
+        # Do not fail signup for email sending errors; log instead.
+        import logging
+
+        logging.exception("Failed to send confirmation email")
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 @router.post("/refresh", response_model=TokenOut)
 async def refresh(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
@@ -76,6 +126,29 @@ async def refresh(request: Request, response: Response):
     cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
     response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/confirm-email")
+async def confirm_email(token: str | None = None, db: AsyncSession = asyncSession):
+    if not token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing token")
+    payload = auth.decode_token(token)
+    if payload.get("type") != "confirm_email":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token payload")
+
+    # mark user's email as verified
+    q = await db.execute(
+        text('UPDATE "user" SET email_verified = TRUE WHERE username = :username RETURNING id'),
+        {"username": username},
+    )
+    row = q.first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await db.commit()
+    return {"detail": "email confirmed"}
 
 
 @router.post("/logout")

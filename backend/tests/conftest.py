@@ -9,6 +9,9 @@ from app.main import app
 from httpx import ASGITransport, AsyncClient
 from tests.utils.fake_llm_response import fake_llm_response
 
+# Ensure pytest-asyncio plugin is loaded so async fixtures/tests are handled
+pytest_plugins = ("pytest_asyncio",)
+
 
 @pytest.fixture(autouse=True)
 def ci_test_environment(monkeypatch):
@@ -28,6 +31,16 @@ def ci_test_environment(monkeypatch):
         return fake_llm_response(model=model, messages=messages)
 
     monkeypatch.setattr("app.services.litellm_adapter.LiteLlmAdapter._call_llm", _fake_call_llm)
+
+    # Avoid using real bcrypt hashing in tests (some bcrypt builds raise on long detection strings).
+    # Provide a simple deterministic hash function for tests. Patch both the auth module
+    # and the already-imported reference in user_service so tests that imported the
+    # symbol at module import time also use the stub.
+    def stub_hash(pw: str) -> str:
+        return f"testhash:{pw[:60]}"
+
+    monkeypatch.setattr("app.auth.get_password_hash", stub_hash)
+    monkeypatch.setattr("app.services.user_service.get_password_hash", stub_hash, raising=False)
 
     # -- jinja2 stub (safe no-op rendering)
     jinja_mod = types.ModuleType("jinja2")
