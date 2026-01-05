@@ -29,10 +29,11 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         # For safe methods, ensure a CSRF cookie exists; if not, set one in the response
         if method in CSRf_SAFE_METHODS:
+            # Always set/overwrite the CSRF cookie on safe requests so the
+            # client-side double-submit token remains in sync with the server.
             response = await call_next(request)
-            if not csrf_cookie:
-                token = secrets.token_urlsafe(32)
-                response.set_cookie("csrf_token", token, httponly=False, secure=False, samesite="lax")
+            token = secrets.token_urlsafe(32)
+            response.set_cookie("csrf_token", token, httponly=False, secure=False, samesite="lax")
             return response
 
         # Skip CSRF check for exempted paths (e.g., login/refresh)
