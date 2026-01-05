@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import JSON, TIMESTAMP, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column  # mypy の推論を利用するためmapped_columnを使用
 from sqlalchemy.sql import func
 
 from .db import Base
@@ -10,7 +10,7 @@ from .db import Base
 class Analysis(Base):
     __tablename__ = "analyses"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     birth_datetime: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     birth_tz: Mapped[str] = mapped_column(Text, nullable=False)

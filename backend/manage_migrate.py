@@ -31,7 +31,21 @@ async def _run_migration(conn: AsyncConnection, file_name: str) -> None:
     with open(migrations_file, "r", encoding="utf-8") as f:
         sql = f.read()
 
-    await conn.exec_driver_sql(sql)
+    # Some DBAPIs (asyncpg) reject executing multiple statements in a
+    # single prepared statement. Execute statements one-by-one to avoid
+    # the "multiple commands in a prepared statement" error.
+    # This is a simple splitter: it splits on semicolons. It works for
+    # typical migration files that use semicolons only to terminate
+    # statements. If your SQL contains semicolons inside string literals
+    # or dollar-quoted blocks, consider using a more robust parser or
+    # running the file with the `psql` client.
+    parts = [p.strip() for p in sql.split(";")]
+    for part in parts:
+        if not part:
+            continue
+        # append semicolon to keep statements identical
+        stmt = part + ";"
+        await conn.exec_driver_sql(stmt)
 
 
 async def run_migrations_async(files: list[str]) -> None:
@@ -50,8 +64,4 @@ def run_migrations(files: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    run_migrations(
-        [
-            "init.sql",
-        ]
-    )
+    run_migrations(["init.sql", "02_create_users.sql"])

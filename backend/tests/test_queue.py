@@ -12,7 +12,7 @@ URL_PREFIX = "/api/v1"
 
 
 @pytest.mark.anyio
-async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch, logged_in_client) -> None:
     async def fake_create_pool(*args, **kwargs):
         class FakePool:
             def __init__(self):
@@ -54,8 +54,7 @@ async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch) -
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            r = await ac.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
+        r = await logged_in_client.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
         assert r.status_code == 200
         assert r.json().get("job_id") == "fake-job-1"
     finally:

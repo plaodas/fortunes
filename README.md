@@ -90,16 +90,19 @@ flowchart TD
 3. `GEMINI_API_KEY=`に `1.` で取得したキーをコピーして貼り付けます
 
 ### コンテナ起動、マイグレーション
+.envの値を適宜変更したら、以下のコマンドを実行します。
 wsl(ubuntu)の場合
 ```bash
 # from repo root
 docker compose up --build -d
 
 # DBのマイグレーション
-# "$DATABASE_URL"はご自身の環境に合わせて修正してください
-DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
-psql -d "$DATABASE_URL" -f backend/migrations/init.sql
+docker compose exec backend bash -c "python backend/manage_migrate.py"
 
+DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
+
+# サンプルデータ投入
+psql -d "$DATABASE_URL" -f backend/migrations/sample_data.sql
 # 漢字データ
 BACKUP_PATH="backend/migrations/kanji.dump"
 pg_restore -v -d "$DATABASE_URL" --clean --no-owner --no-privileges "$BACKUP_PATH"
@@ -112,6 +115,34 @@ PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja
 
 `http://localhost:3000`
 で画面が表示されます
+
+### 開発: 同一オリジンでの API プロキシ (推奨)
+
+開発中は Next.js のリライトでフロントとバックエンドを同一オリジンに見せる構成を推奨します。これによりブラウザの Cookie / CSRF 挙動がシンプルになり、認証まわりのデバッグが容易になります。
+
+- 仕組み (このリポジトリの例):
+  - `frontend/next.config.js` の `rewrites` で `/api/:path*` をバックエンドにプロキシしています。
+  - `docker-compose.yml` では開発用に `API_PROXY_TARGET` を `http://backend:8000` に設定しています。
+  - フロント側の API 呼び出しは相対パス（例: `/api/v1/auth/login`）を使います。
+
+- 利点:
+  - SameSite / Secure によるクロスサイトの制約を回避できるため、`HttpOnly` なクッキーを使った認証が容易になります。
+  - ブラウザの `credentials: 'include'` と組み合わせて、`access_token` クッキーが正しく送信されます。
+
+- 注意点（本番移行時）:
+  - 本番では Traefik などでパスベースのルーティング（`example.com` の `/api` をバックエンドにリバースプロキシ）を設定して同一オリジンを実現するのが望ましいです。
+  - サブドメイン構成（`app.example.com` と `api.example.com`）にする場合は `NEXT_PUBLIC_API_BASE` のようにフロントに API ベース URL を渡し、`SameSite=None; Secure` と HTTPS を必ず有効にしてください。
+
+開発手順（素早く試す）:
+```bash
+# 起動（リポジトリルート）
+docker compose up --build -d
+
+# Frontend は Next の proxy を使うので、フロントで相対パスで呼び出すだけでOK
+# 例: POST /api/v1/auth/login の後に GET /api/v1/auth/me を呼ぶ
+```
+
+セキュリティ注意: 開発中に `HttpOnly` を外したり、`SameSite=None` を無条件で付けると XSS/CSRF リスクが高まるため、本番では適切に HTTPS と `Secure` を有効にしてください。
 
 
 ### 開発環境用ツールのインストール
