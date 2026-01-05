@@ -63,7 +63,7 @@ export default function SignupPage(): JSX.Element {
                 setSubmitting(false);
                 return;
             }
-            setMessage('登録に成功しました — ログインしました。');
+            setMessage('登録に成功しました — 確認メールを送信しました。メール内のリンクをクリックしてアカウントを有効化してください。');
         } catch (err) {
             setMessage('ネットワークエラー');
         } finally {

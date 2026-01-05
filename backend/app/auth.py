@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -5,8 +6,9 @@ from typing import Optional
 from fastapi import HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from passlib.hash import pbkdf2_sha256
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
 
 SECRET_KEY = os.getenv("JWT_SECRET", "change-me")
 ALGORITHM = "HS256"
@@ -20,7 +22,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt has a 72-byte input limit; proactively check and raise a clear error.
+    b = password.encode("utf-8")
+    if len(b) > 72:
+        raise ValueError("password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])")
+
+    try:
+        return pwd_context.hash(password)
+    except Exception:
+        # If bcrypt backend is unavailable or fails (some environments ship
+        # an incompatible 'bcrypt' package), fall back to pbkdf2_sha256 to
+        # avoid failing user signup. Log the exception for diagnostics.
+        logging.exception("bcrypt hashing failed; falling back to pbkdf2_sha256")
+        return pbkdf2_sha256.hash(password)
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
