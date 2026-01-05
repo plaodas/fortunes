@@ -57,7 +57,7 @@ jobs:
     env:
       DB_USE_NULLPOOL: false
       DB_POOL_SIZE: 5
-      DB_MAX_OVERFLOW: 0
+      DB_MAX_OVERFLOW: 10
       # Ensure the backend package is importable during all steps
       PYTHONPATH: backend
       # Provide a DATABASE_URL for any step that needs it by default
