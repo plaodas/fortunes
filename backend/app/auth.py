@@ -2,8 +2,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -13,8 +12,6 @@ SECRET_KEY = os.getenv("JWT_SECRET", "change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -28,14 +25,15 @@ def get_password_hash(password: str) -> str:
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = {"sub": subject}
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": str(expire.timestamp())})
+    # JWT 'exp' must be a numeric timestamp. Store as int seconds since epoch.
+    to_encode.update({"exp": str(int(expire.timestamp()))})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_refresh_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = {"sub": subject, "type": "refresh"}
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
-    to_encode.update({"exp": str(expire.timestamp())})
+    to_encode.update({"exp": str(int(expire.timestamp()))})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -51,8 +49,12 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials") from None
 
 
-async def get_current_username(request: Request, token: str | None = Depends(oauth2_scheme)) -> str:
-    # Try Authorization header token first (OAuth2 scheme). If absent, try cookie 'access_token'
+async def get_current_username(request: Request) -> str:
+    # Prefer Authorization: Bearer <token> header, fallback to 'access_token' cookie
+    auth_header = request.headers.get("Authorization")
+    token = None
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
     if not token:
         token = request.cookies.get("access_token")
     if not token:
