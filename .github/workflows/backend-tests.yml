@@ -110,6 +110,10 @@ jobs:
             ss -ltn || true
             echo "Attempting a final psql connection to show error output:"
             PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -p 5432 -U postgres -d postgres -c '\l' || true
+            echo "Listing containers:"
+            docker ps -a --format 'ID={{.ID}} Image={{.Image}} Status={{.Status}} Names={{.Names}}' || true
+            echo "Logs for postgres:15 derived containers:"
+            docker ps -a --filter ancestor=postgres:15 -q | xargs -r docker logs --tail 200 || true
             exit 1
           fi
 
