@@ -63,7 +63,7 @@ export default function SignupPage(): JSX.Element {
                 setSubmitting(false);
                 return;
             }
-            setMessage('登録に成功しました — 確認メールを送信しました。メール内のリンクをクリックしてアカウントを有効化してください。');
+            setMessage('登録に成功しました — 確認メールを送信しました。<br>メール内のリンクをクリックしてアカウントを有効化してください。');
         } catch (err) {
             setMessage('ネットワークエラー');
         } finally {
@@ -106,10 +106,10 @@ export default function SignupPage(): JSX.Element {
 
                 <button type="submit" disabled={submitting || hasErrors}>{submitting ? '登録中…' : 'アカウント作成'}</button>
             </form>
+            {message && <p style={{ marginTop: 16 }}>{message}</p>}
             <div style={{ marginTop: 12 }}>
                 <a href="/login">既にアカウントをお持ちですか？ログイン</a>
             </div>
-            {message && <p style={{ marginTop: 16 }}>{message}</p>}
         </div>
     );
 }

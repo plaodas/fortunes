@@ -1,8 +1,9 @@
 # app/api/v1/router.py
 from fastapi import APIRouter
 
-from . import auth as auth_router_module
-from .endpoints import analyses, analyze_enqueue, health, jobs
+from .endpoints import analyses, analyze_enqueue
+from .endpoints import auth as auth_router_module
+from .endpoints import health, jobs
 
 api_router = APIRouter()
 api_router.include_router(health.router)
