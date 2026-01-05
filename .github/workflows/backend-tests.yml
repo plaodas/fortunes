@@ -19,6 +19,14 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('dev-requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install pinned tools
         run: |
           python -m pip install --upgrade pip
@@ -48,13 +56,45 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install backend deps
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run backend tests
+      - name: Run backend tests (with coverage and junit)
         env:
           PYTHONPATH: backend
         run: |
-          pytest backend/tests -q
+          pytest backend/tests -q --junitxml=backend/reports/junit.xml --cov=backend --cov-report=xml:backend/reports/coverage.xml
+
+      - name: Upload backend coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/reports/coverage.xml
+
+      - name: Upload backend junit report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-junit
+          path: backend/reports/junit.xml
+
+      - name: Annotate backend test results in PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: dorny/test-reporter@v1
+        with:
+          name: backend-tests
+          path: backend/reports/junit.xml
+          reporter: junit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
