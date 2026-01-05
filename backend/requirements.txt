@@ -7,6 +7,7 @@ sqlalchemy==2.0.45
 psycopg2-binary==2.9.6 # 外部の管理ツール、ローカルの同期クライアントなどのために保留
 asyncpg==0.31.0
 pytest==9.0.2
+pytest-cov==4.0.0
 # httpx pin was causing conflicts between litellm and google-genai.
 # Allow a compatible range required by google-genai (>=0.28.1).
 httpx>=0.28.1,<1.0
