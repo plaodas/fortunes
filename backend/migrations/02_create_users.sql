@@ -2,8 +2,19 @@
 CREATE TABLE IF NOT EXISTS "user" (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     display_name TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    last_login TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Helpful indexes (unique constraints already create indexes for username/email)
+CREATE INDEX IF NOT EXISTS idx_user_username ON "user"(username);
+CREATE INDEX IF NOT EXISTS idx_user_email ON "user"(email);
+
+-- Consider adding a trigger to update `updated_at` on row modification if desired.

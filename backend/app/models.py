@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, TIMESTAMP, Integer, Text
+from sqlalchemy import JSON, TIMESTAMP, Boolean, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column  # mypy の推論を利用するためmapped_columnを使用
 from sqlalchemy.sql import func
 
@@ -46,3 +46,19 @@ class LLMResponse(Base):
     usage: Mapped[dict] = mapped_column(JSON, nullable=True)
     raw: Mapped[dict] = mapped_column(JSON, nullable=True)  # TODO: 生データのマスク処理を追加する
     created_at: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    last_login: Mapped[str | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    created_at: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), server_onupdate=func.now())
