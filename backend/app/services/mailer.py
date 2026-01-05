@@ -65,10 +65,7 @@ def _send_smtp(msg: EmailMessage) -> None:
 def send_confirmation_email(to_address: str, confirm_url: str, *, subject: Optional[str] = None) -> None:
     subject = subject or "ようこそ — メールアドレスの確認"
     body = (
-        "この度はご登録ありがとうございます。\n\n"
-        "メールアドレスを確認するには、以下のリンクをクリックしてください。\n\n"
-        f"{confirm_url}\n\n"
-        "もしご自身で登録していない場合はこのメールを無視してください。"
+        f"この度はご登録ありがとうございます。\n\nメールアドレスを確認するには、以下のリンクをクリックしてください。\n\n{confirm_url}\n\nもしご自身で登録していない場合はこのメールを無視してください。"
     )
 
     msg = EmailMessage()
