@@ -3,15 +3,13 @@ from typing import Any, AsyncGenerator
 import pytest
 from app import db as db_module
 from app.main import app
-from httpx import ASGITransport, AsyncClient
 
 URL_PREFIX = "/api/v1"
 
 
 @pytest.mark.anyio
-async def test_health():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        r = await ac.get(URL_PREFIX + "/health")
+async def test_health(async_client):
+    r = await async_client.get(URL_PREFIX + "/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
 
@@ -64,15 +62,15 @@ class FakeAsyncSession:
 
 
 @pytest.mark.anyio
-async def test_get_analyses_empty():
+async def test_get_analyses_empty(logged_in_client):
     # dependency override
     async def fake_get_db() -> AsyncGenerator[Any, Any]:
         yield FakeAsyncSession(query_result=[])
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            r = await ac.get(URL_PREFIX + "/analyses")
+        # perform a real login first so cookies/headers are set
+        r = await logged_in_client.get(URL_PREFIX + "/analyses")
         assert r.status_code == 200
         assert r.json() == []
     finally:
@@ -80,14 +78,13 @@ async def test_get_analyses_empty():
 
 
 @pytest.mark.anyio
-async def test_delete_analysis_not_found():
+async def test_delete_analysis_not_found(logged_in_client):
     async def fake_get_db():
         yield FakeAsyncSession(query_result=None)
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            r = await ac.delete(URL_PREFIX + "/analyses/123")
+        r = await logged_in_client.delete(URL_PREFIX + "/analyses/123")
         assert r.status_code == 200
         assert r.json() == {"status": "not found"}
     finally:
@@ -95,7 +92,7 @@ async def test_delete_analysis_not_found():
 
 
 @pytest.mark.anyio
-async def test_delete_analysis_deleted():
+async def test_delete_analysis_deleted(logged_in_client):
     fake_obj = type("O", (), {"id": 1})
 
     # dependency override
@@ -104,8 +101,7 @@ async def test_delete_analysis_deleted():
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            r = await ac.delete(URL_PREFIX + "/analyses/1")
+        r = await logged_in_client.delete(URL_PREFIX + "/analyses/1")
         assert r.status_code == 200
         assert r.json() == {"status": "deleted"}
     finally:

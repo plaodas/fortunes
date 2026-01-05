@@ -1,8 +1,12 @@
 import sys
 import types
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import pytest
+
+# test HTTP client
+from app.main import app
+from httpx import ASGITransport, AsyncClient
 from tests.utils.fake_llm_response import fake_llm_response
 
 
@@ -42,3 +46,23 @@ def ci_test_environment(monkeypatch):
     monkeypatch.setitem(sys.modules, "jinja2", jinja_mod)
 
     yield
+
+
+@pytest.fixture
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    """Provide an `httpx.AsyncClient` bound to the FastAPI app for tests."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+
+@pytest.fixture
+async def logged_in_client(async_client: AsyncClient) -> AsyncGenerator[AsyncClient, None]:
+    """Log in via the real auth endpoint and return a client with cookies set."""
+    # use demo/demo as in tests that exercise auth flow
+    resp = await async_client.post("/api/v1/auth/login", data={"username": "demo", "password": "demo"})
+    assert resp.status_code == 200
+    # Set CSRF header for subsequent unsafe requests (double-submit)
+    csrf = async_client.cookies.get("csrf_token")
+    if csrf:
+        async_client.headers.update({"x-csrf-token": csrf})
+    yield async_client
