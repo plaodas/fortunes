@@ -1,5 +1,7 @@
+import os
 import secrets
 from datetime import timedelta
+from typing import Literal, Optional, cast
 
 from app import auth
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -17,6 +19,20 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
+# Restrict samesite to the allowed literal values so type checkers are satisfied.
+CookieSameSite = Literal["lax", "strict", "none"]
+
+
+def _resolve_samesite(value: str | None) -> Optional[CookieSameSite]:
+    if value is None:
+        return None
+    v = value.lower()
+    allowed = ("lax", "strict", "none")
+    if v not in allowed:
+        v = "lax"
+    return cast(CookieSameSite, v)
+
+
 @router.post("/login", response_model=TokenOut)
 async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth2_form):
     # NOTE: 現時点ではDB接続を行わず、受け取った username を subject にしたトークンを返します。
@@ -26,13 +42,18 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth
     access_token = auth.create_access_token(subject=username, expires_delta=timedelta(minutes=15))
     refresh_token = auth.create_refresh_token(subject=username)
 
+    # Cookie attributes configurable by env for dev/prod differences
+    cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
+    cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))  # 'lax' or 'none' recommended for cross-site
+    cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
+
     # Set HttpOnly cookies for SPA usage
-    response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="lax")
-    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=False, samesite="lax")
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
 
     # Create CSRF token (double-submit). This cookie is readable by JS so frontend can set X-CSRF-Token header.
     csrf_token = secrets.token_urlsafe(32)
-    response.set_cookie("csrf_token", csrf_token, httponly=False, secure=False, samesite="lax")
+    response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
 
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -50,7 +71,10 @@ async def refresh(request: Request, response: Response):
     if not username:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: missing subject")
     access_token = auth.create_access_token(subject=username)
-    response.set_cookie("access_token", access_token, httponly=True, secure=False, samesite="lax")
+    cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
+    cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))
+    cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
