@@ -58,6 +58,10 @@ jobs:
       DB_USE_NULLPOOL: false
       DB_POOL_SIZE: 5
       DB_MAX_OVERFLOW: 0
+      # Ensure the backend package is importable during all steps
+      PYTHONPATH: backend
+      # Provide a DATABASE_URL for any step that needs it by default
+      DATABASE_URL: postgresql+asyncpg://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
     needs: lint
     services:
       postgres:

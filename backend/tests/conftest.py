@@ -61,6 +61,24 @@ def ci_test_environment(monkeypatch):
     yield
 
 
+@pytest.fixture(scope="session", autouse=True)
+def apply_migrations():
+    """Ensure DB schema exists for tests by running the simple migration runner.
+
+    This uses `backend/manage_migrate.py` which reads `DATABASE_URL` to
+    target the test database. Running migrations here avoids "relation
+    \"user\" does not exist" errors in tests that access the DB.
+    """
+    try:
+        from backend import manage_migrate
+
+        manage_migrate.run_migrations(["init.sql", "02_create_users.sql"])
+    except Exception:
+        # Don't fail import-time if migrations cannot be applied; let tests
+        # surface DB errors so CI logs show the underlying cause.
+        pass
+
+
 @pytest.fixture
 async def async_client() -> AsyncGenerator[AsyncClient, None]:
     """Provide an `httpx.AsyncClient` bound to the FastAPI app for tests."""
