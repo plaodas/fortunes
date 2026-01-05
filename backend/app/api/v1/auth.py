@@ -5,10 +5,12 @@ from typing import Literal, Optional, cast
 
 from app import auth
 from app.db import get_db
+from app.services import mailer
 from app.services.user_service import create_user
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -90,6 +92,19 @@ async def signup(response: Response, payload: SignupIn, db: AsyncSession = async
     csrf_token = secrets.token_urlsafe(32)
     response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
 
+    # Send confirmation email (non-blocking behavior could be added later)
+    try:
+        # create a short-lived email confirmation token
+        token = auth.create_email_token(subject=user.username)
+        confirm_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000") + f"/confirm-email?token={token}"
+        # payload.email is required by the request model, use it to satisfy static typing
+        mailer.send_confirmation_email(payload.email, confirm_url)
+    except Exception:
+        # Do not fail signup for email sending errors; log instead.
+        import logging
+
+        logging.exception("Failed to send confirmation email")
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -111,6 +126,29 @@ async def refresh(request: Request, response: Response):
     cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
     response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/confirm-email")
+async def confirm_email(token: str | None = None, db: AsyncSession = asyncSession):
+    if not token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing token")
+    payload = auth.decode_token(token)
+    if payload.get("type") != "confirm_email":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token payload")
+
+    # mark user's email as verified
+    q = await db.execute(
+        text('UPDATE "user" SET email_verified = TRUE WHERE username = :username RETURNING id'),
+        {"username": username},
+    )
+    row = q.first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await db.commit()
+    return {"detail": "email confirmed"}
 
 
 @router.post("/logout")

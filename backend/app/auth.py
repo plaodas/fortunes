@@ -12,6 +12,7 @@ SECRET_KEY = os.getenv("JWT_SECRET", "change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+EMAIL_CONFIRM_EXPIRE_HOURS = int(os.getenv("EMAIL_CONFIRM_EXPIRE_HOURS", "24"))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -33,6 +34,13 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
 def create_refresh_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = {"sub": subject, "type": "refresh"}
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    to_encode.update({"exp": str(int(expire.timestamp()))})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_email_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = {"sub": subject, "type": "confirm_email"}
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(hours=EMAIL_CONFIRM_EXPIRE_HOURS))
     to_encode.update({"exp": str(int(expire.timestamp()))})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
