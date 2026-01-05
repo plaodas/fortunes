@@ -54,10 +54,8 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
-           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: fortunes
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready -U postgres
           --health-interval 10s
@@ -85,9 +83,7 @@ jobs:
 
       - name: Wait for Postgres
         env:
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/fortunes
-          env:
-            DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
+          DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/fortunes
         run: |
           # install a small client to check readiness
           sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -101,7 +97,7 @@ jobs:
           PYTHONPATH: backend
         run: |
           python backend/manage_migrate.py
-          psql -d $DATABASE_URL -f backend/migrations/sample_data.sql -f backend/migrations/sample_kanji.sql
+          PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }} psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_data.sql -f backend/migrations/sample_kanji.sql
       - name: Run backend tests (with coverage and junit)
         env:
           PYTHONPATH: backend
