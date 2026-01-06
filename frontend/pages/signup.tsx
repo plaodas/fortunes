@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import Link from 'next/link'
+import Layout from '../components/Layout'
+import { useAuth } from '../context/AuthContext'
+import { apiFetch } from '../utils/api'
 
 function validateEmail(email: string) {
     // simple RFC-ish check
@@ -21,6 +24,7 @@ export default function SignupPage(): JSX.Element {
     const [message, setMessage] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<{ [k: string]: string | null }>({});
+    const { refresh } = useAuth()
 
     function runValidation() {
         const e: { [k: string]: string | null } = {};
@@ -51,12 +55,11 @@ export default function SignupPage(): JSX.Element {
 
         setSubmitting(true);
         try {
-            const res = await fetch('/api/v1/auth/signup', {
+            const res = await apiFetch('/api/v1/auth/signup', {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: username.trim(), password, email: email.trim(), display_name: displayName || undefined }),
-            });
+            }, { redirectOn401: false });
 
             if (!res.ok) {
                 const text = await res.text();
@@ -64,7 +67,18 @@ export default function SignupPage(): JSX.Element {
                 setSubmitting(false);
                 return;
             }
-            setMessage('登録に成功しました — 確認メールを送信しました。<br>メール内のリンクをクリックしてアカウントを有効化してください。');
+            setMessage("登録に成功しました — 確認メールを送信しました。メール内のリンクをクリックしてアカウントを有効化してください。");
+            // Attempt to refresh auth state in case server set cookies
+            try {
+                const me = await refresh()
+                // Only redirect to analysis if email has been verified
+                if (me && me.email_verified) {
+                    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                    (window.location.pathname && window.location.replace('/analysis'))
+                }
+            } catch (e) {
+                // ignore
+            }
         } catch (err) {
             setMessage('ネットワークエラー');
         } finally {
@@ -82,35 +96,37 @@ export default function SignupPage(): JSX.Element {
     const hasErrors = Object.keys(errors).length > 0;
 
     return (
-        <div style={{ padding: 24, maxWidth: 420, margin: '0 auto' }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>新規登録</h1>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} noValidate>
-                <div>
-                    <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
-                    {errors.username && <div style={{ color: 'red', fontSize: 12 }}>{errors.username}</div>}
-                </div>
+        <Layout>
+            <div className="card" style={{ maxWidth: 420, margin: '0 auto' }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>新規登録</h1>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} noValidate>
+                    <div>
+                        <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                        {errors.username && <div style={{ color: 'red', fontSize: 12 }}>{errors.username}</div>}
+                    </div>
 
-                <div>
-                    <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" />
-                    {errors.email && <div style={{ color: 'red', fontSize: 12 }}>{errors.email}</div>}
-                </div>
+                    <div>
+                        <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" />
+                        {errors.email && <div style={{ color: 'red', fontSize: 12 }}>{errors.email}</div>}
+                    </div>
 
-                <div>
-                    <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
-                    {errors.password && <div style={{ color: 'red', fontSize: 12 }}>{errors.password}</div>}
-                </div>
+                    <div>
+                        <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
+                        {errors.password && <div style={{ color: 'red', fontSize: 12 }}>{errors.password}</div>}
+                    </div>
 
-                <div>
-                    <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="表示名 (任意)" />
-                    {errors.displayName && <div style={{ color: 'red', fontSize: 12 }}>{errors.displayName}</div>}
-                </div>
+                    <div>
+                        <input className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="表示名 (任意)" />
+                        {errors.displayName && <div style={{ color: 'red', fontSize: 12 }}>{errors.displayName}</div>}
+                    </div>
 
-                <button type="submit" disabled={submitting || hasErrors}>{submitting ? '登録中…' : 'アカウント作成'}</button>
-            </form>
-            {message && <p style={{ marginTop: 16 }}>{message}</p>}
-            <div style={{ marginTop: 12 }}>
-                <Link href="/login">既にアカウントをお持ちの場合はログインへ</Link>
+                    <button className="btn text-lg px-6 py-3" type="submit" disabled={submitting || hasErrors}>{submitting ? '登録中…' : 'アカウント作成'}</button>
+                </form>
+                {message && <p style={{ marginTop: 16 }}>{message}</p>}
+                <div style={{ marginTop: 12 }}>
+                    <Link href="/login" role="menuitem" style={{ padding: '8px 12px', borderRadius: 6, textDecoration: 'none', color: 'inherit' }}>既にアカウントをお持ちの場合はログインへ</Link>
+                </div>
             </div>
-        </div>
+        </Layout>
     );
 }

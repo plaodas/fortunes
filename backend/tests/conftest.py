@@ -13,36 +13,40 @@ from tests.utils.fake_llm_response import fake_llm_response
 pytest_plugins = ("pytest_asyncio",)
 
 
-@pytest.fixture(autouse=True)
-def ci_test_environment(monkeypatch):
-    """Autouse fixture for CI/tests that stubs external dependencies and
-    configures environment for deterministic behavior.
-
-    - Provide a minimal `litellm` module so imports succeed and return
-      predictable fake responses.
-    - Provide a minimal `jinja2.Environment` stub so templates don't require
-      real Jinja2 rendering in tests.
-    - Set environment variables to ensure adapter uses fake responses.
-    """
-    # ensure tests use fake LLM responses
-    monkeypatch.setenv("GEMINI_API_KEY", "")
+def _patch_litellm(monkeypatch):
+    """Patch LiteLlmAdapter to return deterministic fake responses."""
 
     async def _fake_call_llm(ctx: Any, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict[str, Any]:
         return fake_llm_response(model=model, messages=messages)
 
     monkeypatch.setattr("app.services.litellm_adapter.LiteLlmAdapter._call_llm", _fake_call_llm)
 
-    # Avoid using real bcrypt hashing in tests (some bcrypt builds raise on long detection strings).
-    # Provide a simple deterministic hash function for tests. Patch both the auth module
-    # and the already-imported reference in user_service so tests that imported the
-    # symbol at module import time also use the stub.
+
+def _patch_hashes(monkeypatch):
+    """Stub password hashing and verification for tests."""
+
     def stub_hash(pw: str) -> str:
         return f"testhash:{pw[:60]}"
 
+    def stub_verify(plain: str, hashed: str) -> bool:
+        if not isinstance(hashed, str):
+            return False
+        if hashed.startswith("testhash:"):
+            return hashed == f"testhash:{plain[:60]}"
+        try:
+            from app.auth import verify_password as real_verify
+
+            return real_verify(plain, hashed)
+        except Exception:
+            return False
+
     monkeypatch.setattr("app.auth.get_password_hash", stub_hash)
     monkeypatch.setattr("app.services.user_service.get_password_hash", stub_hash, raising=False)
+    monkeypatch.setattr("app.auth.verify_password", stub_verify)
 
-    # -- jinja2 stub (safe no-op rendering)
+
+def _patch_jinja(monkeypatch):
+    """Provide a minimal jinja2.Environment stub."""
     jinja_mod = types.ModuleType("jinja2")
 
     class Environment:
@@ -57,6 +61,44 @@ def ci_test_environment(monkeypatch):
 
     jinja_mod.Environment = Environment
     monkeypatch.setitem(sys.modules, "jinja2", jinja_mod)
+
+
+def _ensure_demo_user():
+    """Ensure a 'demo' user exists by running a short async seeding routine."""
+    try:
+        import asyncio
+
+        from app.db import SessionLocal
+        from app.services.user_service import create_user, get_user_by_username
+
+        async def _seed():
+            async with SessionLocal() as session:
+                existing = await get_user_by_username(session, "demo")
+                if not existing:
+                    try:
+                        await create_user(session, username="demo", password="demo", email="demo@example.com", display_name="Demo User")
+                    except Exception:
+                        pass
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(_seed())
+        finally:
+            loop.close()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def ci_test_environment(monkeypatch):
+    """Autouse fixture that composes smaller test-environment patches."""
+    # ensure tests use fake LLM responses
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+
+    _patch_litellm(monkeypatch)
+    _patch_hashes(monkeypatch)
+    _patch_jinja(monkeypatch)
+    _ensure_demo_user()
 
     yield
 

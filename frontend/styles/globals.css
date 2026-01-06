@@ -97,8 +97,62 @@ input[type="number"]:focus {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
 }
 
+/* Style .btn for both <button> and anchor/link elements */
+.btn {
+  @apply inline-flex items-center justify-center bg-gradient-to-r from-primary to-accent text-white px-5 py-3 rounded-lg font-semibold shadow-lg hover:scale-[1.01] transition-transform no-underline;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+
+/* Preserve previous selector for buttons (keeps specificity) */
 button.btn {
-  @apply bg-gradient-to-r from-primary to-accent text-white px-5 py-3 rounded-lg font-semibold shadow-lg hover:scale-[1.01] transition-transform
+  @apply bg-gradient-to-r from-primary to-accent text-white;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+
+input[type="submit"].btn,
+button[type="submit"].btn {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+
+/* Ensure gradients render on native <button> by setting the gradient explicitly */
+button.btn,
+button[type="submit"].btn,
+input[type="submit"].btn {
+  background-image: linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%);
+  background-color: transparent;
+}
+
+/* Ensure anchors with .btn match button appearance exactly */
+a.btn {
+  @apply inline-flex items-center justify-center bg-gradient-to-r from-primary to-accent text-white px-5 py-3 rounded-lg font-semibold shadow-lg no-underline;
+  line-height: 1;
+  vertical-align: middle;
+  -webkit-appearance: none;
+}
+
+/* Focus styles for both anchors and buttons */
+.btn:focus,
+a.btn:focus,
+button.btn:focus {
+  outline: 3px solid rgba(79, 70, 229, 0.12);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+/* Ghost variant for secondary links */
+.btn-ghost {
+  @apply bg-white/0 text-primary border border-primary/20;
 }
 
 .result-pre {

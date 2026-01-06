@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import Header from '../components/Header'
+import { apiFetch } from '../utils/api'
+import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import LoadingOverlay from '../components/LoadingOverlay'
 import FiveElementChart from '../components/FiveElementChart'
@@ -58,7 +59,7 @@ type AnalysisOut = {
     created_at: string
 }
 
-export default function Analysys(): JSX.Element {
+export default function Analysis(): JSX.Element {
     const [name_sei, setNameSei] = useState<string>('')
     const [name_mei, setNameMei] = useState<string>('')
     const [date, setDate] = useState<string>('1990-01-01')
@@ -141,11 +142,10 @@ export default function Analysys(): JSX.Element {
         setLoading(true)
         try {
             // Enqueue job
-            const enqueueRes = await fetch('/api/v1/analyze/enqueue', {
+            const enqueueRes = await apiFetch('/api/v1/analyze/enqueue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour), birth_tz: birthTz }),
-                credentials: 'include'
             })
 
             if (!enqueueRes.ok) {
@@ -179,7 +179,7 @@ export default function Analysys(): JSX.Element {
             while (Date.now() - start < timeoutMs) {
                 await new Promise((r) => setTimeout(r, intervalMs))
                 try {
-                    const st = await fetch(`${apiBase}/jobs/${job_id}`, { credentials: 'include' })
+                    const st = await apiFetch(`${apiBase}/jobs/${job_id}`)
                     if (!st.ok) {
                         // continue polling on transient errors
                         continue
@@ -230,7 +230,8 @@ export default function Analysys(): JSX.Element {
 
     async function fetchHistory(): Promise<AnalysisOut[] | null> {
         try {
-            const res = await fetch('/api/v1/analyses', { credentials: 'include' })
+            const res = await apiFetch('/api/v1/analyses')
+            if (res.status === 401) return null
             if (res.ok) {
                 const arr: AnalysisOut[] = await res.json()
                 setHistory(arr)
@@ -246,7 +247,7 @@ export default function Analysys(): JSX.Element {
         if (!confirm('この鑑定を削除しますか？')) return
         try {
             const url = `/api/v1/analyses/${id}`
-            const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+            const res = await apiFetch(url, { method: 'DELETE' })
             if (res.ok) {
                 setHistory((prev) => prev.filter((h) => h.id !== id))
                 if (selected?.id === id) setSelected(null)
@@ -259,11 +260,9 @@ export default function Analysys(): JSX.Element {
     }
 
     return (
-        <main className="container">
-            <Header />
-            {loading && <LoadingOverlay />}
+        <Layout hero={(
             <div className="hero card">
-                <p className="" style={{ marginTop: 8 }}>四柱推命と姓名判断から生来の運命を読み解くアプリ</p>
+                <p className="" style={{ marginTop: 8 }}>お名前と生年月日、生まれた時間を入力して鑑定ボタンを押してください</p>
                 <form onSubmit={submit} style={{ marginTop: 8 }}>
                     <div className="form-grid">
                         <div className="form-row">
@@ -324,11 +323,13 @@ export default function Analysys(): JSX.Element {
                         </div>
                         <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />
                         <div className="form-action" style={{ alignSelf: 'end' }}>
-                            <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定する</button>
+                            <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定</button>
                         </div>
                     </div>
                 </form>
             </div>
+        )}>
+            {loading && <LoadingOverlay />}
 
             {result && (
                 <section style={{ marginTop: 16 }}>
@@ -410,6 +411,6 @@ export default function Analysys(): JSX.Element {
                     </div>
                 </Modal>
             )}
-        </main>
+        </Layout>
     )
 }
