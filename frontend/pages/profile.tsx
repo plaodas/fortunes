@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
 import { apiFetch } from '../utils/api'
+import requireAuth from '../utils/ssrAuth'
 import { useAuth } from '../context/AuthContext'
 import { useRouter } from 'next/router'
 
@@ -109,3 +110,5 @@ export default function ProfilePage(): JSX.Element {
         </Layout>
     )
 }
+
+export const getServerSideProps = requireAuth

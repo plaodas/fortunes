@@ -3,10 +3,13 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import HTTPException, Request, status
+from app.db import get_db
+from app.services.user_service import get_user_by_id
+from fastapi import Depends, HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from passlib.hash import pbkdf2_sha256
+from sqlalchemy.ext.asyncio import AsyncSession
 
 pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
 
@@ -15,6 +18,8 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 EMAIL_CONFIRM_EXPIRE_HOURS = int(os.getenv("EMAIL_CONFIRM_EXPIRE_HOURS", "24"))
+
+async_session = Depends(get_db)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -71,7 +76,7 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials") from None
 
 
-async def get_current_username(request: Request) -> str:
+async def get_current_username(request: Request, db: AsyncSession = async_session) -> str:
     # Prefer Authorization: Bearer <token> header, fallback to 'access_token' cookie
     auth_header = request.headers.get("Authorization")
     token = None
@@ -82,7 +87,18 @@ async def get_current_username(request: Request) -> str:
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     payload = decode_token(token)
-    username = payload.get("sub")
-    if username is None:
+    subject = payload.get("sub")
+    if subject is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-    return username
+
+    # `sub` is now expected to be the numeric user id (as a string). Resolve
+    # the user id to a username for legacy callers that expect a username.
+    try:
+        user_id = int(subject)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject") from None
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user.username

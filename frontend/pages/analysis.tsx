@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { apiFetch } from '../utils/api'
+import requireAuth from '../utils/ssrAuth'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import LoadingOverlay from '../components/LoadingOverlay'
@@ -414,3 +415,5 @@ export default function Analysis(): JSX.Element {
         </Layout>
     )
 }
+
+export const getServerSideProps = requireAuth

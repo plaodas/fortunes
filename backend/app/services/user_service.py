@@ -1,6 +1,5 @@
 from typing import Optional
 
-from app.auth import get_password_hash
 from app.models import User
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +31,9 @@ async def create_user(db: AsyncSession, username: str, password: str, email: Opt
         existing_email = await get_user_by_email(db, email)
         if existing_email:
             raise ValueError("email already exists")
+
+    # Import hashing function lazily to avoid circular imports at module import time
+    from app.auth import get_password_hash
 
     pw_hash = get_password_hash(password)
     user = User(username=username, email=email, password_hash=pw_hash, display_name=display_name)

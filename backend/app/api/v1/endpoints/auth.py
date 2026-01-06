@@ -56,8 +56,9 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth
     if not user or not auth.verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
-    access_token = auth.create_access_token(subject=username, expires_delta=timedelta(minutes=15))
-    refresh_token = auth.create_refresh_token(subject=username)
+    # Use immutable user id as the JWT `sub` so username changes won't invalidate tokens
+    access_token = auth.create_access_token(subject=str(user.id), expires_delta=timedelta(minutes=15))
+    refresh_token = auth.create_refresh_token(subject=str(user.id))
 
     # Cookie attributes configurable by env for dev/prod differences
     cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
@@ -83,8 +84,9 @@ async def signup(response: Response, payload: SignupIn, db: AsyncSession = async
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
-    access_token = auth.create_access_token(subject=user.username)
-    refresh_token = auth.create_refresh_token(subject=user.username)
+    # set tokens subject to user.id (immutable)
+    access_token = auth.create_access_token(subject=str(user.id))
+    refresh_token = auth.create_refresh_token(subject=str(user.id))
 
     cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
     cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))
@@ -98,8 +100,8 @@ async def signup(response: Response, payload: SignupIn, db: AsyncSession = async
 
     # Send confirmation email (non-blocking behavior could be added later)
     try:
-        # create a short-lived email confirmation token
-        token = auth.create_email_token(subject=user.username)
+        # create a short-lived email confirmation token using user id as subject
+        token = auth.create_email_token(subject=str(user.id))
         confirm_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000") + f"/confirm-email?token={token}"
         # payload.email is required by the request model, use it to satisfy static typing
         mailer.send_confirmation_email(payload.email, confirm_url)
@@ -139,15 +141,23 @@ async def confirm_email(token: str | None = None, db: AsyncSession = asyncSessio
     payload = auth.decode_token(token)
     if payload.get("type") != "confirm_email":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token type")
-    username = payload.get("sub")
-    if not username:
+    subject = payload.get("sub")
+    if not subject:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token payload")
 
-    # mark user's email as verified
-    q = await db.execute(
-        text('UPDATE "user" SET email_verified = TRUE WHERE username = :username RETURNING id'),
-        {"username": username},
-    )
+    # subject is the user id (string). Update by id when possible.
+    try:
+        user_id = int(subject)
+        q = await db.execute(
+            text('UPDATE "user" SET email_verified = TRUE WHERE id = :user_id RETURNING id'),
+            {"user_id": user_id},
+        )
+    except Exception:
+        # Fallback: treat subject as username
+        q = await db.execute(
+            text('UPDATE "user" SET email_verified = TRUE WHERE username = :username RETURNING id'),
+            {"username": subject},
+        )
     row = q.first()
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
