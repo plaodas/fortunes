@@ -161,3 +161,61 @@ async def logout(response: Response):
 @router.get("/me")
 async def me(username: str = Depends(auth.get_current_username)):
     return {"username": username}
+
+
+class UpdateIn(BaseModel):
+    username: str | None = None
+    email: EmailStr | None = None
+
+
+@router.post("/update")
+async def update_profile(payload: UpdateIn, db: AsyncSession = asyncSession, username: str = Depends(auth.get_current_username)):
+    # fetch current user
+    from app.services.user_service import get_user_by_email, get_user_by_username
+
+    user = await get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # If username changed, ensure uniqueness
+    if payload.username and payload.username != user.username:
+        existing = await get_user_by_username(db, payload.username)
+        if existing:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="username already exists")
+        user.username = payload.username
+
+    # If email changed, ensure uniqueness
+    if payload.email and payload.email != user.email:
+        existing_email = await get_user_by_email(db, payload.email)
+        if existing_email:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already exists")
+        user.email = payload.email
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return {"detail": "updated", "username": user.username, "email": user.email}
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+async def change_password(payload: ChangePasswordIn, db: AsyncSession = asyncSession, username: str = Depends(auth.get_current_username)):
+    from app.services.user_service import get_user_by_username
+
+    user = await get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # verify current password
+    if not auth.verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="current password is incorrect")
+
+    # set new password hash
+    user.password_hash = auth.get_password_hash(payload.new_password)
+    db.add(user)
+    await db.commit()
+    return {"detail": "password changed"}

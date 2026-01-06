@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Link from 'next/link'
 
 function validateEmail(email: string) {
     // simple RFC-ish check
@@ -82,7 +83,7 @@ export default function SignupPage(): JSX.Element {
 
     return (
         <div style={{ padding: 24, maxWidth: 420, margin: '0 auto' }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>アカウント作成</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>新規登録</h1>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} noValidate>
                 <div>
                     <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
@@ -108,7 +109,7 @@ export default function SignupPage(): JSX.Element {
             </form>
             {message && <p style={{ marginTop: 16 }}>{message}</p>}
             <div style={{ marginTop: 12 }}>
-                <a href="/login">既にアカウントをお持ちですか？ログイン</a>
+                <Link href="/login">既にアカウントをお持ちの場合はログインへ</Link>
             </div>
         </div>
     );

@@ -23,6 +23,7 @@ type BirthAnalysis = {
 type Props = {
   analysis?: BirthAnalysis | null
   height?: number
+  width?: number
 }
 
 export default function FiveElementChart({ analysis, height = 300, width = 300 }: Props) {
