@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import Header from '../components/Header'
+import Layout from '../components/Layout'
 import Link from 'next/link'
 
 export default function SettingsPage(): JSX.Element {
@@ -41,22 +41,21 @@ export default function SettingsPage(): JSX.Element {
     }
 
     return (
-        <main className="container">
-            <Header />
+        <Layout>
             <div className="card" style={{ maxWidth: 720, margin: '0 auto' }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700 }}>パスワード設定</h1>
                 <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                     <label>
                         現在のパスワード
-                        <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                        <input className="input" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
                     </label>
                     <label>
                         新しいパスワード
-                        <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                        <input className="input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </label>
                     <label>
                         新しいパスワード（確認）
-                        <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                        <input className="input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                     </label>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn" type="submit" disabled={saving}>変更</button>
@@ -65,6 +64,6 @@ export default function SettingsPage(): JSX.Element {
                     {message && <div className="muted">{message}</div>}
                 </form>
             </div>
-        </main>
+        </Layout>
     )
 }

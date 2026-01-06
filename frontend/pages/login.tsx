@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from 'next/router';
+import Layout from "../components/Layout";
 
 export default function LoginPage(): JSX.Element {
     const router = useRouter()
@@ -49,7 +50,7 @@ export default function LoginPage(): JSX.Element {
             const data = await prot.json();
             // Redirect to `next` if provided, otherwise to root
             try {
-                router.replace((next as string) || '/')
+                router.replace((next as string) || '/analysis')
                 return
             } catch (e) {
                 setMessage("保護されたAPIの呼び出しに成功しました: " + JSON.stringify(data));
@@ -60,17 +61,19 @@ export default function LoginPage(): JSX.Element {
     }
 
     return (
-        <div style={{ padding: 24, maxWidth: 420, margin: "0 auto" }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>ログイン</h1>
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
-                <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
-                <button type="submit">ログイン</button>
-            </form>
-            <div style={{ marginTop: 12 }}>
-                <a href="/signup">新規登録</a>
+        <Layout>
+            <div className="card" style={{ maxWidth: 420, margin: "0 auto" }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>ログイン</h1>
+                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <input className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                    <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" />
+                    <button className="btn" type="submit">ログイン</button>
+                </form>
+                <div style={{ marginTop: 12 }}>
+                    <a href="/signup">新規登録</a>
+                </div>
+                {message && <p style={{ marginTop: 16 }}>{message}</p>}
             </div>
-            {message && <p style={{ marginTop: 16 }}>{message}</p>}
-        </div>
+        </Layout>
     );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import Header from '../components/Header'
+import Layout from '../components/Layout'
 import Link from 'next/link'
 
 export default function ProfilePage(): JSX.Element {
@@ -56,8 +56,7 @@ export default function ProfilePage(): JSX.Element {
     }
 
     return (
-        <main className="container">
-            <Header />
+        <Layout>
             <div className="card" style={{ maxWidth: 720, margin: '0 auto' }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700 }}>プロフィール編集</h1>
                 {loading ? (
@@ -66,20 +65,20 @@ export default function ProfilePage(): JSX.Element {
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                         <label>
                             ユーザー名
-                            <input value={username} onChange={(e) => setUsername(e.target.value)} />
+                            <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} />
                         </label>
                         <label>
                             メールアドレス
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                         </label>
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button className="btn" type="submit" disabled={saving}>保存</button>
-                            <Link href="/settings" style={{ alignSelf: 'center' }}>パスワード変更</Link>
+                            <Link href="/settings" className="btn btn-ghost text-sm px-3 py-2" style={{ alignSelf: 'center' }}>パスワード変更</Link>
                         </div>
                         {message && <div className="muted">{message}</div>}
                     </form>
                 )}
             </div>
-        </main>
+        </Layout>
     )
 }

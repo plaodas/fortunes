@@ -97,8 +97,19 @@ input[type="number"]:focus {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
 }
 
+/* Style .btn for both <button> and anchor/link elements */
+.btn {
+  @apply inline-flex items-center justify-center bg-gradient-to-r from-primary to-accent text-white px-5 py-3 rounded-lg font-semibold shadow-lg hover:scale-[1.01] transition-transform no-underline;
+}
+
+/* Preserve previous selector for buttons (keeps specificity) */
 button.btn {
-  @apply bg-gradient-to-r from-primary to-accent text-white px-5 py-3 rounded-lg font-semibold shadow-lg hover:scale-[1.01] transition-transform
+  @apply bg-gradient-to-r from-primary to-accent text-white;
+}
+
+/* Ghost variant for secondary links */
+.btn-ghost {
+  @apply bg-white/0 text-primary border border-primary/20;
 }
 
 .result-pre {

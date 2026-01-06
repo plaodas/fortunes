@@ -44,14 +44,18 @@ export default function ConfirmEmailPage(): JSX.Element {
                 <div>
                     <p style={{ color: 'green' }}>{message}</p>
                     <p>トップページへ移動します…</p>
-                    <p><Link href="/">今すぐ移動</Link></p>
+                    <p><Link href="/" className="btn text-sm px-4 py-2">今すぐ移動</Link></p>
                 </div>
             )}
             {status === 'error' && (
                 <div>
                     <p style={{ color: 'red' }}>{message}</p>
                     <p>問題が続く場合はサポートに連絡してください。</p>
-                    <p><Link href="/signup">再登録</Link> または <Link href="/login">ログイン</Link></p>
+                    <p>
+                        <Link href="/signup" className="btn text-sm px-3 py-2">再登録</Link>
+                        <span style={{ margin: '0 8px' }}>または</span>
+                        <Link href="/login" className="btn text-sm px-3 py-2">ログイン</Link>
+                    </p>
                 </div>
             )}
         </div>

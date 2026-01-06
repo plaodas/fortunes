@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Link from 'next/link'
+import Layout from '../components/Layout'
 
 function validateEmail(email: string) {
     // simple RFC-ish check
@@ -82,35 +83,37 @@ export default function SignupPage(): JSX.Element {
     const hasErrors = Object.keys(errors).length > 0;
 
     return (
-        <div style={{ padding: 24, maxWidth: 420, margin: '0 auto' }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>新規登録</h1>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} noValidate>
-                <div>
-                    <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
-                    {errors.username && <div style={{ color: 'red', fontSize: 12 }}>{errors.username}</div>}
-                </div>
+        <Layout>
+            <div className="card" style={{ maxWidth: 420, margin: '0 auto' }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>新規登録</h1>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} noValidate>
+                    <div>
+                        <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                        {errors.username && <div style={{ color: 'red', fontSize: 12 }}>{errors.username}</div>}
+                    </div>
 
-                <div>
-                    <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" />
-                    {errors.email && <div style={{ color: 'red', fontSize: 12 }}>{errors.email}</div>}
-                </div>
+                    <div>
+                        <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" />
+                        {errors.email && <div style={{ color: 'red', fontSize: 12 }}>{errors.email}</div>}
+                    </div>
 
-                <div>
-                    <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
-                    {errors.password && <div style={{ color: 'red', fontSize: 12 }}>{errors.password}</div>}
-                </div>
+                    <div>
+                        <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
+                        {errors.password && <div style={{ color: 'red', fontSize: 12 }}>{errors.password}</div>}
+                    </div>
 
-                <div>
-                    <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="表示名 (任意)" />
-                    {errors.displayName && <div style={{ color: 'red', fontSize: 12 }}>{errors.displayName}</div>}
-                </div>
+                    <div>
+                        <input className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="表示名 (任意)" />
+                        {errors.displayName && <div style={{ color: 'red', fontSize: 12 }}>{errors.displayName}</div>}
+                    </div>
 
-                <button type="submit" disabled={submitting || hasErrors}>{submitting ? '登録中…' : 'アカウント作成'}</button>
-            </form>
-            {message && <p style={{ marginTop: 16 }}>{message}</p>}
-            <div style={{ marginTop: 12 }}>
-                <Link href="/login">既にアカウントをお持ちの場合はログインへ</Link>
+                    <button className="btn" type="submit" disabled={submitting || hasErrors}>{submitting ? '登録中…' : 'アカウント作成'}</button>
+                </form>
+                {message && <p style={{ marginTop: 16 }}>{message}</p>}
+                <div style={{ marginTop: 12 }}>
+                    <Link href="/login" className="btn btn-ghost text-sm px-3 py-2">既にアカウントをお持ちの場合はログインへ</Link>
+                </div>
             </div>
-        </div>
+        </Layout>
     );
 }

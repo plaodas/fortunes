@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import Header from '../components/Header'
+import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import LoadingOverlay from '../components/LoadingOverlay'
 import FiveElementChart from '../components/FiveElementChart'
@@ -58,7 +58,7 @@ type AnalysisOut = {
     created_at: string
 }
 
-export default function Analysys(): JSX.Element {
+export default function Analysis(): JSX.Element {
     const [name_sei, setNameSei] = useState<string>('')
     const [name_mei, setNameMei] = useState<string>('')
     const [date, setDate] = useState<string>('1990-01-01')
@@ -259,11 +259,9 @@ export default function Analysys(): JSX.Element {
     }
 
     return (
-        <main className="container">
-            <Header />
-            {loading && <LoadingOverlay />}
+        <Layout hero={(
             <div className="hero card">
-                <p className="" style={{ marginTop: 8 }}>四柱推命と姓名判断から生来の運命を読み解くアプリ</p>
+                <p className="" style={{ marginTop: 8 }}>お名前と生年月日、生まれた時間を入力して鑑定ボタンを押してください</p>
                 <form onSubmit={submit} style={{ marginTop: 8 }}>
                     <div className="form-grid">
                         <div className="form-row">
@@ -324,11 +322,13 @@ export default function Analysys(): JSX.Element {
                         </div>
                         <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />
                         <div className="form-action" style={{ alignSelf: 'end' }}>
-                            <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定する</button>
+                            <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定</button>
                         </div>
                     </div>
                 </form>
             </div>
+        )}>
+            {loading && <LoadingOverlay />}
 
             {result && (
                 <section style={{ marginTop: 16 }}>
@@ -410,6 +410,6 @@ export default function Analysys(): JSX.Element {
                     </div>
                 </Modal>
             )}
-        </main>
+        </Layout>
     )
 }
