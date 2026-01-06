@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../utils/api'
+import { filterUsernameInput, isValidUsername } from '../utils/validation'
 
 function validateEmail(email: string) {
     // simple RFC-ish check
@@ -29,6 +30,7 @@ export default function SignupPage(): JSX.Element {
     function runValidation() {
         const e: { [k: string]: string | null } = {};
         if (!username.trim()) e.username = "ユーザー名は必須です";
+        else if (!isValidUsername(username.trim())) e.username = "ユーザー名に使用できない文字が含まれています";
         else if (username.trim().length < 3) e.username = "ユーザー名は3文字以上必要です";
 
         if (!email.trim()) e.email = "メールアドレスは必須です";
@@ -101,22 +103,23 @@ export default function SignupPage(): JSX.Element {
                 <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>新規登録</h1>
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} noValidate>
                     <div>
-                        <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                        <input className="input" type="text" style={{ width: '100%' }} value={username} onChange={(e) => setUsername(filterUsernameInput(e.target.value))} placeholder="ユーザー名" />
+                        <div className="muted" style={{ fontSize: 12 }}>使用可能な文字: 半角英数字と記号（スペース不可）</div>
                         {errors.username && <div style={{ color: 'red', fontSize: 12 }}>{errors.username}</div>}
                     </div>
 
                     <div>
-                        <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" />
+                        <input className="input" type="text" style={{ width: '100%' }} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" />
                         {errors.email && <div style={{ color: 'red', fontSize: 12 }}>{errors.email}</div>}
                     </div>
 
                     <div>
-                        <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" type="password" />
+                        <input className="input" type="password" style={{ width: '100%' }} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" />
                         {errors.password && <div style={{ color: 'red', fontSize: 12 }}>{errors.password}</div>}
                     </div>
 
                     <div>
-                        <input className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="表示名 (任意)" />
+                        <input className="input" type="text" style={{ width: '100%' }} value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="表示名 (任意)" />
                         {errors.displayName && <div style={{ color: 'red', fontSize: 12 }}>{errors.displayName}</div>}
                     </div>
 

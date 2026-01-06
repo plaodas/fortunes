@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
 import { apiFetch } from '../utils/api'
+import { filterUsernameInput } from '../utils/validation'
 import requireAuth from '../utils/ssrAuth'
 import { useAuth } from '../context/AuthContext'
 import { useRouter } from 'next/router'
@@ -91,7 +92,10 @@ export default function ProfilePage(): JSX.Element {
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ minWidth: 80, display: 'inline-block' }}>ユーザー名</span>
-                            <input className="input" style={{ flex: 1 }} type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                            <div style={{ flex: 1 }}>
+                                <input className="input" style={{ width: '100%' }} type="text" value={username} onChange={(e) => setUsername(filterUsernameInput(e.target.value))} placeholder="ユーザー名" />
+                                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>使用可能な文字: 半角英数字と記号（スペース不可）</div>
+                            </div>
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ minWidth: 80, display: 'inline-block' }}>メールアドレス</span>
