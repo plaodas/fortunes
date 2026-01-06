@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useRouter } from 'next/router';
 
 export default function LoginPage(): JSX.Element {
+    const router = useRouter()
+    const { next } = router.query as { next?: string }
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [message, setMessage] = useState<string | null>(null);
@@ -44,7 +47,13 @@ export default function LoginPage(): JSX.Element {
             }
 
             const data = await prot.json();
-            setMessage("保護されたAPIの呼び出しに成功しました: " + JSON.stringify(data));
+            // Redirect to `next` if provided, otherwise to root
+            try {
+                router.replace((next as string) || '/')
+                return
+            } catch (e) {
+                setMessage("保護されたAPIの呼び出しに成功しました: " + JSON.stringify(data));
+            }
         } catch (err) {
             setMessage("ネットワークエラー");
         }
@@ -59,7 +68,7 @@ export default function LoginPage(): JSX.Element {
                 <button type="submit">ログイン</button>
             </form>
             <div style={{ marginTop: 12 }}>
-                <a href="/signup">アカウント作成</a>
+                <a href="/signup">新規登録</a>
             </div>
             {message && <p style={{ marginTop: 16 }}>{message}</p>}
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Link from 'next/link'
 
 export default function ConfirmEmailPage(): JSX.Element {
     const router = useRouter();
@@ -12,7 +13,7 @@ export default function ConfirmEmailPage(): JSX.Element {
         async function confirm() {
             setStatus('loading');
             try {
-                const url = `/api/v1/auth/confirm-email?token=${encodeURIComponent(token)}`;
+                const url = `/api/v1/auth/confirm-email?token=${encodeURIComponent(token as string)}`;
                 const res = await fetch(url, { method: 'GET', credentials: 'include' });
                 if (res.ok) {
                     const body = await res.json().catch(() => null);
@@ -43,14 +44,14 @@ export default function ConfirmEmailPage(): JSX.Element {
                 <div>
                     <p style={{ color: 'green' }}>{message}</p>
                     <p>トップページへ移動します…</p>
-                    <p><a href="/">今すぐ移動</a></p>
+                    <p><Link href="/">今すぐ移動</Link></p>
                 </div>
             )}
             {status === 'error' && (
                 <div>
                     <p style={{ color: 'red' }}>{message}</p>
                     <p>問題が続く場合はサポートに連絡してください。</p>
-                    <p><a href="/signup">再登録</a> または <a href="/login">ログイン</a></p>
+                    <p><Link href="/signup">再登録</Link> または <Link href="/login">ログイン</Link></p>
                 </div>
             )}
         </div>
