@@ -1,9 +1,26 @@
 # app/services/job_service.py
+import json
 from typing import Any
 
 from arq import create_pool
 from arq.connections import RedisSettings
 from arq.jobs import Job
+
+
+def _safe_serialize(obj: Any) -> Any:
+    """Return a JSON-serializable representation of obj.
+
+    - If obj is an exception, return its type and message.
+    - If obj is already JSON-serializable, return it as-is.
+    - Otherwise, return its string representation.
+    """
+    if isinstance(obj, BaseException):
+        return {"error_type": type(obj).__name__, "error": str(obj)}
+    try:
+        json.dumps(obj)
+        return obj
+    except Exception:
+        return repr(obj)
 
 
 class JobService:
@@ -29,7 +46,7 @@ class JobService:
             try:
                 info = await job.result_info()
                 if info:
-                    result = info.result
+                    result = _safe_serialize(info.result)
             except Exception:
                 pass
 

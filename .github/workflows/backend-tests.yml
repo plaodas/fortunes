@@ -151,7 +151,6 @@ jobs:
           set -euo pipefail
           echo "Applying SQL migrations directly with psql"
           psql -h localhost -U postgres -d fortunes -f backend/migrations/init.sql
-          psql -h localhost -U postgres -d fortunes -f backend/migrations/02_create_users.sql
           # load sample data
           psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_data.sql
           psql -h localhost -U postgres -d fortunes -f backend/migrations/sample_kanji.sql
