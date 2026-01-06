@@ -214,7 +214,37 @@ async def update_profile(payload: UpdateIn, db: AsyncSession = asyncSession, use
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return {"detail": "updated", "username": user.username, "email": user.email}
+    # Issue rotated tokens so client continues working without forcing re-login.
+    cookie_secure = os.getenv("JWT_COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
+    cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))
+    cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
+
+    access_token = auth.create_access_token(subject=str(user.id))
+    refresh_token = auth.create_refresh_token(subject=str(user.id))
+
+    # Set HttpOnly cookies for SPA usage
+    response = Response()
+    response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    response.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    # rotate CSRF token (readable by JS)
+    csrf_token = secrets.token_urlsafe(32)
+    response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+
+    # Attach cookies to a proper JSON response and return new token info plus profile
+    from fastapi.responses import JSONResponse
+
+    payload_out = {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "username": user.username,
+        "email": user.email,
+    }
+    json_resp = JSONResponse(payload_out)
+    # copy cookies onto the JSONResponse
+    json_resp.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    json_resp.set_cookie("refresh_token", refresh_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    json_resp.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
+    return json_resp
 
 
 class ChangePasswordIn(BaseModel):
