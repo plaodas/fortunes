@@ -10,14 +10,15 @@
 算出は一般的なものを更に簡略化しています。算出した値からLLMで鑑定文を作成します。
 
 AI駆動開発の練習用として不慣れなPython／FastAPI、React/Next.jsで作成しています。
-~~認証~~、ログ監視などは未実装です。
+
+ログ監視などは未実装です。
 
 
 ### 画面イメージ
 
-<img src="images/preview1.png" height="400"><img src="images/preview2.png" height="400"><img src="images/preview4.png" height="400"><img src="images/preview5.png" height="400">
+<img src="images/image_1.png" height="400">
 
-<img src="images/preview6.png" height="400"><img src="images/preview7.png" height="400">
+<img src="images/image_2.png" height="400">
 
 ## 構成
 コンテナは以下のような構成です
@@ -63,7 +64,7 @@ flowchart TD
     （Grafana/Loki/CloudWatch等）
   `")
 
-  user <-->|認証は後回し| frontend
+  user <-->|JWT| frontend
   frontend <--> backend
   backend <--> worker
   worker <--> redis
@@ -97,17 +98,7 @@ wsl(ubuntu)の場合
 docker compose up --build -d
 
 # DBのマイグレーション
-~~docker compose exec backend bash -c "python manage_migrate.py"~~
-
-DATABASE_URL="postgresql://postgres:password@localhost:5432/fortunes"
-psql -d "$DATABASE_URL" -f backend/migrations/init.sql
-
-# サンプルデータ投入
-psql -d "$DATABASE_URL" -f backend/migrations/sample_data.sql
-
-# 漢字データ
-BACKUP_PATH="backend/migrations/kanji.dump"
-pg_restore -v -d "$DATABASE_URL" --clean --no-owner --no-privileges "$BACKUP_PATH"
+./scripts/init_db.sh
 ```
 PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja_JP.UTF-8'で指定。
 誕生日時は内部でUTCとして保存し、指定されたtimezoneに戻して返しています。
@@ -117,6 +108,9 @@ PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja
 
 `http://localhost:3000`
 で画面が表示されます
+
+user: fortunes
+password: fortunes33
 
 <!-- ### 開発: 同一オリジンでの API プロキシ (推奨)
 
