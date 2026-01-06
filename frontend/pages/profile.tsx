@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
 import { apiFetch } from '../utils/api'
+import { filterUsernameInput } from '../utils/validation'
+import requireAuth from '../utils/ssrAuth'
 import { useAuth } from '../context/AuthContext'
 import { useRouter } from 'next/router'
 
@@ -14,7 +16,7 @@ export default function ProfilePage(): JSX.Element {
 
 
     const router = useRouter()
-    const { logout } = useAuth()
+    const { logout, refresh } = useAuth()
 
     useEffect(() => {
         let mounted = true
@@ -60,19 +62,17 @@ export default function ProfilePage(): JSX.Element {
                 const txt = await res.text()
                 setMessage('更新に失敗しました: ' + txt)
             } else {
-                // parse returned user info; backend returns username/email
+                // parse returned user info; backend returns new token and profile
                 const data = await res.json()
                 setMessage('更新しました')
-                // If the username changed server-side, current JWT subject is stale.
-                if (data.username && data.username !== username) {
-                    // Force logout so user re-authenticates with new username.
-                    setMessage('ユーザー名を変更しました。再ログインしてください。')
-                    try {
-                        await logout()
-                    } catch (e) {
-                        // ignore
-                        router.replace('/login')
-                    }
+                // update local form state with authoritative values
+                if (data.username) setUsername(data.username)
+                if (data.email) setEmail(data.email)
+                // Refresh global auth state so frontend picks up rotated cookies/token
+                try {
+                    await refresh()
+                } catch (e) {
+                    // ignore - user will be redirected if not authenticated
                 }
             }
         } catch (e) {
@@ -92,7 +92,10 @@ export default function ProfilePage(): JSX.Element {
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ minWidth: 80, display: 'inline-block' }}>ユーザー名</span>
-                            <input className="input" style={{ flex: 1 }} type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                            <div style={{ flex: 1 }}>
+                                <input className="input" style={{ width: '100%' }} type="text" value={username} onChange={(e) => setUsername(filterUsernameInput(e.target.value))} placeholder="ユーザー名" />
+                                <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>使用可能な文字: 半角英数字と記号（スペース不可）</div>
+                            </div>
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ minWidth: 80, display: 'inline-block' }}>メールアドレス</span>
@@ -109,3 +112,5 @@ export default function ProfilePage(): JSX.Element {
         </Layout>
     )
 }
+
+export const getServerSideProps = requireAuth

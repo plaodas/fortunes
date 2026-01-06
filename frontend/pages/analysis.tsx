@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { apiFetch } from '../utils/api'
+import requireAuth from '../utils/ssrAuth'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import LoadingOverlay from '../components/LoadingOverlay'
@@ -262,7 +263,7 @@ export default function Analysis(): JSX.Element {
     return (
         <Layout hero={(
             <div className="hero card">
-                <p className="" style={{ marginTop: 8 }}>お名前と生年月日、生まれた時間を入力して鑑定ボタンを押してください</p>
+                <p className="" style={{ marginTop: 8 }}>お名前と生年月日、生まれた時間を入力して［鑑定する］ボタンを押してください</p>
                 <form onSubmit={submit} style={{ marginTop: 8 }}>
                     <div className="form-grid">
                         <div className="form-row">
@@ -323,7 +324,7 @@ export default function Analysis(): JSX.Element {
                         </div>
                         <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />
                         <div className="form-action" style={{ alignSelf: 'end' }}>
-                            <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定</button>
+                            <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定する</button>
                         </div>
                     </div>
                 </form>
@@ -414,3 +415,5 @@ export default function Analysis(): JSX.Element {
         </Layout>
     )
 }
+
+export const getServerSideProps = requireAuth

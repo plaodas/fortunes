@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
 import { apiFetch } from '../utils/api'
+import requireAuth from '../utils/ssrAuth'
 
 export default function SettingsPage(): JSX.Element {
     const [currentPassword, setCurrentPassword] = useState('')
@@ -67,3 +68,5 @@ export default function SettingsPage(): JSX.Element {
         </Layout>
     )
 }
+
+export const getServerSideProps = requireAuth

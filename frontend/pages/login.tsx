@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from "../components/Layout";
 import Link from "next/link";
 import { apiFetch } from '../utils/api'
+import { filterUsernameInput } from '../utils/validation'
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage(): JSX.Element {
@@ -65,7 +66,8 @@ export default function LoginPage(): JSX.Element {
             <div className="card" style={{ maxWidth: 420, margin: "0 auto" }}>
                 <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>ログイン</h1>
                 <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <input className="input" type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ユーザー名" />
+                    <input className="input" type="text" value={username} onChange={(e) => setUsername(filterUsernameInput(e.target.value))} placeholder="ユーザー名" />
+                    <div className="muted" style={{ fontSize: 12 }}>使用可能な文字: 半角英数字と記号（スペース不可）</div>
                     <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード" />
                     <button className="btn text-lg px-6 py-3" type="submit">ログイン</button>
                 </form>
