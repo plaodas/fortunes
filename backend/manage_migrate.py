@@ -64,4 +64,4 @@ def run_migrations(files: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    run_migrations(["init.sql", "02_create_users.sql"])
+    run_migrations(["init.sql"])
