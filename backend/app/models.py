@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, TIMESTAMP, Boolean, Integer, Text
+from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column  # mypy の推論を利用するためmapped_columnを使用
 from sqlalchemy.sql import func
 
@@ -11,6 +11,7 @@ class Analysis(Base):
     __tablename__ = "analyses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     birth_datetime: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     birth_tz: Mapped[str] = mapped_column(Text, nullable=False)
@@ -36,6 +37,7 @@ class LLMResponse(Base):
     __tablename__ = "llm_responses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     request_id: Mapped[str] = mapped_column(Text, nullable=True)
     provider: Mapped[str] = mapped_column(Text, nullable=True)
     model: Mapped[str] = mapped_column(Text, nullable=True)
@@ -49,7 +51,7 @@ class LLMResponse(Base):
 
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)

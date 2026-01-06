@@ -24,7 +24,7 @@ export async function apiFetch(input: RequestInfo, init?: RequestInit, opts?: Ap
         }
     }
 
-    const finalInit = { credentials: 'include', ...(init || {}), headers }
+    const finalInit: RequestInit = { credentials: 'include', ...(init || {}), headers }
     const res = await fetch(input, finalInit)
     const redirectOn401 = opts?.redirectOn401 ?? true
     if (typeof window !== 'undefined' && res.status === 401 && redirectOn401) {

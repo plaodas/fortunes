@@ -24,8 +24,9 @@ class LiteLlmAdapter:
         self.model: str = model
         os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
 
-    async def make_analysis(self, system_prompt: str, user_prompt: str) -> models.LLMResponse:
+    async def make_analysis(self, user_id: int, system_prompt: str, user_prompt: str) -> models.LLMResponse:
         return await self._generate(
+            user_id=user_id,
             provider=self.provider,
             model=self.model,
             messages=[
@@ -34,10 +35,11 @@ class LiteLlmAdapter:
             ],
         )
 
-    async def _generate(self, **llm_param) -> models.LLMResponse:
+    async def _generate(self, user_id: int, **llm_param) -> models.LLMResponse:
         """Generic LLM call wrapper for litellm.
 
         args:
+            user_id: int
             llm_param: dict with keys:
             - provider: str
             - model: str
@@ -56,6 +58,7 @@ class LiteLlmAdapter:
             response_id = llm_response.get("id", None)
             usage_obj = llm_response.get("usage", None)
             return models.LLMResponse(
+                user_id=user_id,
                 request_id=None,
                 provider=self.provider,
                 model=self.model,

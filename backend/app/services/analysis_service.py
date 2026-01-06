@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AnalysisService:
-    async def list_analyses(self, db: AsyncSession, limit: int = 50) -> List[AnalysisOut]:
+    async def list_analyses(self, db: AsyncSession, user_id: int, limit: int = 50) -> List[AnalysisOut]:
         # stmt = select(models.Analysis).order_by(models.Analysis.id.desc()).limit(limit)
 
         # SQL: (birth_datetime AT TIME ZONE timezone) yields timestamp without tz in that zone,
@@ -19,6 +19,7 @@ class AnalysisService:
         stmt = (
             select(
                 models.Analysis.id,
+                models.Analysis.user_id,
                 models.Analysis.name,
                 func.date(local_ts).label("birth_date"),
                 cast(func.extract("hour", local_ts), Integer).label("birth_hour"),
@@ -29,6 +30,7 @@ class AnalysisService:
                 models.Analysis.detail,
                 models.Analysis.created_at,
             )
+            .where(models.Analysis.user_id == user_id)
             .order_by(models.Analysis.created_at.desc())
             .limit(limit)
         )
@@ -39,8 +41,8 @@ class AnalysisService:
 
         return dto_list(rows, AnalysisOut)
 
-    async def delete_analysis(self, db: AsyncSession, analysis_id: int) -> bool:
-        stmt = select(models.Analysis).where(models.Analysis.id == analysis_id)
+    async def delete_analysis(self, db: AsyncSession, user_id: int, analysis_id: int) -> bool:
+        stmt = select(models.Analysis).where(models.Analysis.id == analysis_id, models.Analysis.user_id == user_id)
         res = await db.execute(stmt)
         obj = res.scalar_one_or_none()
 

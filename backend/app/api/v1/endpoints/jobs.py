@@ -7,5 +7,6 @@ job_service = JobService()
 
 
 @router.get("/{job_id}")
-async def get_job_status(job_id: str):
+async def get_job_status(job_id: str) -> dict:
+    # public endpoint: return job status (authorization handled elsewhere if needed)
     return await job_service.get_job_status(job_id)

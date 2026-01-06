@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import AuthModal from './AuthModal'
-import { apiFetch } from '../utils/api'
+import LoginModal from './LoginModal'
 import { useAuth } from '../context/AuthContext'
 
 type User = {
@@ -23,9 +22,6 @@ export default function Header(): JSX.Element {
     const { user, setUser, logout, refresh } = useAuth()
     const [open, setOpen] = useState(false)
     const [showLoginModal, setShowLoginModal] = useState(false)
-    const [loginUsername, setLoginUsername] = useState('')
-    const [loginPassword, setLoginPassword] = useState('')
-    const [loginMessage, setLoginMessage] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
     const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -54,41 +50,7 @@ export default function Header(): JSX.Element {
         // logout() already redirects via provider
     }
 
-    async function handleLoginSubmit(e?: React.FormEvent) {
-        if (e) e.preventDefault()
-        setLoginMessage(null)
-        try {
-            const form = new FormData()
-            form.append('username', loginUsername)
-            form.append('password', loginPassword)
-            const res = await apiFetch('/api/v1/auth/login', { method: 'POST', body: form }, { redirectOn401: false })
-            if (!res.ok) {
-                setLoginMessage(`ログインに失敗しました: ${res.status}`)
-                return
-            }
-
-            // read csrf cookie and call /api/v1/auth/me to confirm
-            const cookies = (document.cookie || '').split(';').map((c) => c.trim())
-            const csrfCookie = cookies.find((c) => c.startsWith('csrf_token='))
-            const csrfValue = csrfCookie ? decodeURIComponent(csrfCookie.split('=')[1]) : null
-
-            const prot = await apiFetch('/api/v1/auth/me', { method: 'GET', headers: csrfValue ? { 'x-csrf-token': csrfValue } : {} }, { redirectOn401: false })
-            if (!prot.ok) {
-                setLoginMessage(`保護API呼び出しに失敗: ${prot.status}`)
-                return
-            }
-            // Refresh global auth state to ensure consistency
-            await refresh()
-            setShowLoginModal(false)
-            setLoginUsername('')
-            setLoginPassword('')
-            setLoginMessage(null)
-            // navigate to analysis if intended
-            router.push('/analysis')
-        } catch (err) {
-            setLoginMessage('ネットワークエラー')
-        }
-    }
+    // login handled by LoginModal; onSuccess will call refresh/setUser as needed
 
     return (
         <>
@@ -155,18 +117,20 @@ export default function Header(): JSX.Element {
                 </div>
             </header>
 
-            {showLoginModal && (
-                <AuthModal open={showLoginModal} onClose={closeLoginModal} title="ログイン">
-                    <form onSubmit={(e) => { e.preventDefault(); handleLoginSubmit() }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <input className="input" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="ユーザー名" />
-                        <input className="input" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="パスワード" type="password" />
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn text-lg px-6 py-3" type="submit">ログイン</button>
-                        </div>
-                        {loginMessage && <div className="muted" style={{ marginTop: 8 }}>{loginMessage}</div>}
-                    </form>
-                </AuthModal>
-            )}
+            <LoginModal
+                open={showLoginModal}
+                onClose={closeLoginModal}
+                onSuccess={async (u) => {
+                    try {
+                        await refresh()
+                    } catch (e) {
+                        // ignore
+                    }
+                    setShowLoginModal(false)
+                    router.push('/analysis')
+                }}
+                redirectTo="/analysis"
+            />
         </>
     )
 }

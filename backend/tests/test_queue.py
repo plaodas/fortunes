@@ -102,7 +102,7 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch) -> None:
             self.provider = provider
             self.model = model
 
-        async def make_analysis(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+        async def make_analysis(self, user_id: int, system_prompt: str, user_prompt: str) -> LLMResponse:
             message = {
                 "role": "assistant",
                 "images": [],
@@ -120,6 +120,7 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch) -> None:
 
             return LLMResponse(
                 id=1,
+                user_id=1,
                 request_id=None,
                 provider=self.provider,
                 model=self.model,
@@ -185,7 +186,7 @@ def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> N
 
 @pytest.mark.anyio
 async def test_process_analysis_creates_and_returns_id(fake_llm, fake_session_local) -> None:
-    res = await tasks_module.process_analysis({}, "太", "郎", "1990-01-01", 12)
+    res = await tasks_module.process_analysis(1, {}, "太", "郎", "1990-01-01", 12)
 
     assert isinstance(res, dict)
     assert res.get("id") == 99999
