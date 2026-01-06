@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS analyses (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER  NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,
     birth_datetime TIMESTAMPTZ NOT NULL,
     birth_tz TEXT NOT NULL DEFAULT 'Asia/Tokyo',
@@ -9,6 +10,7 @@ CREATE TABLE IF NOT EXISTS analyses (
     detail TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+COMMENT ON COLUMN analyses.user_id IS 'users.id への外部キー';
 COMMENT ON COLUMN analyses.name IS '姓名';
 COMMENT ON COLUMN analyses.birth_datetime IS 'UTCで保存';
 COMMENT ON COLUMN analyses.birth_tz IS 'IANA timezone string';
@@ -16,6 +18,7 @@ COMMENT ON COLUMN analyses.result_birth IS '四柱推命の結果';
 COMMENT ON COLUMN analyses.result_name IS '姓名判断の結果';
 COMMENT ON COLUMN analyses.summary IS '短い鑑定文';
 COMMENT ON COLUMN analyses.detail IS '詳細な鑑定文';
+COMMENT ON COLUMN analyses.user_id IS 'users.id への外部キー';
 
 
 -- Create kanji table for stroke counts (imported from ucs-strokes)
@@ -37,6 +40,7 @@ COMMENT ON COLUMN kanji.source IS 'データソース情報';
 
 CREATE TABLE IF NOT EXISTS llm_responses (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER  NOT NULL REFERENCES users(id),
     request_id TEXT,
     provider TEXT,
     model TEXT,
@@ -49,6 +53,7 @@ CREATE TABLE IF NOT EXISTS llm_responses (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+COMMENT ON COLUMN llm_responses.user_id IS 'users.id への外部キー';
 COMMENT ON COLUMN llm_responses.request_id IS 'LLM request identifier for relation with user request';
 COMMENT ON COLUMN llm_responses.provider IS 'LLM provider name for price analyze. example ''openai'', ''azure'', ''anthropic''';
 COMMENT ON COLUMN llm_responses.model IS 'Model name e.g. ''gpt-4o'', ''claude-2''';
@@ -58,3 +63,4 @@ COMMENT ON COLUMN llm_responses.prompt_hash IS 'Hash of the prompt for deduplica
 COMMENT ON COLUMN llm_responses.response_text IS 'Textual response from the LLM';
 COMMENT ON COLUMN llm_responses.usage IS 'Token usage statistics';
 COMMENT ON COLUMN llm_responses.raw IS 'Raw JSON response from the LLM provider';
+COMMENT ON COLUMN llm_responses.user_id IS 'users.id への外部キー';
