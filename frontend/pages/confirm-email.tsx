@@ -17,7 +17,7 @@ export default function ConfirmEmailPage(): JSX.Element {
                 const res = await fetch(url, { method: 'GET', credentials: 'include' });
                 if (res.ok) {
                     const body = await res.json().catch(() => null);
-                    setMessage((body && (body.detail || body.message)) || 'メールアドレスを確認しました。');
+                    setMessage('メールアドレスを確認しました。');
                     setStatus('success');
                     // redirect to home after short delay
                     setTimeout(() => router.push('/'), 2000);

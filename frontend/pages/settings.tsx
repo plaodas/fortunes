@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
+import { apiFetch } from '../utils/api'
 
 export default function SettingsPage(): JSX.Element {
     const [currentPassword, setCurrentPassword] = useState('')
@@ -18,12 +19,11 @@ export default function SettingsPage(): JSX.Element {
         }
         setSaving(true)
         try {
-            const res = await fetch('/api/v1/auth/change-password', {
+            const res = await apiFetch('/api/v1/auth/change-password', {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-            })
+            }, { redirectOn401: false })
             if (!res.ok) {
                 const txt = await res.text()
                 setMessage('変更に失敗しました: ' + txt)
@@ -45,17 +45,17 @@ export default function SettingsPage(): JSX.Element {
             <div className="card" style={{ maxWidth: 720, margin: '0 auto' }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700 }}>パスワード設定</h1>
                 <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                    <label>
-                        現在のパスワード
-                        <input className="input" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ width: 100, display: 'inline-block' }}>現在のパスワード</span>
+                        <input className="input" style={{ flex: 1, }} type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
                     </label>
-                    <label>
-                        新しいパスワード
-                        <input className="input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ width: 100, display: 'inline-block' }}>新しいパスワード</span>
+                        <input className="input" style={{ flex: 1 }} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </label>
-                    <label>
-                        新しいパスワード（確認）
-                        <input className="input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ width: 100, display: 'inline-block' }}>新しいパスワード（確認）</span>
+                        <input className="input" style={{ flex: 1 }} type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                     </label>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn" type="submit" disabled={saving}>変更</button>

@@ -13,7 +13,7 @@ export default function AuthModal({ open, onClose, title, children }: Props) {
 
     // Use Modal for accessibility/focus trap but apply the `hero` content class
     return (
-        <Modal title={title} onClose={onClose} contentClassName="hero">
+        <Modal title={title} onClose={onClose} contentClassName="">
             {children}
         </Modal>
     )

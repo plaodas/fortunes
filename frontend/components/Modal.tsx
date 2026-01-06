@@ -100,6 +100,7 @@ export default function Modal({ title, onClose, children, contentClassName }: Pr
             onClick={onClose}
             aria-label="Close dialog"
             style={{
+              boxShadow: 'none',
               padding: '6px 10px',
               fontSize: 13,
               lineHeight: '18px',
@@ -119,6 +120,6 @@ export default function Modal({ title, onClose, children, contentClassName }: Pr
         </div>
         <div style={{ marginTop: 12 }}>{children}</div>
       </div>
-    </div>
+    </div >
   )
 }

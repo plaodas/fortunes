@@ -1,24 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import Layout from '../components/Layout'
+import { useAuth } from '../context/AuthContext'
 
 export default function Home(): JSX.Element {
-  const [loggedIn, setLoggedIn] = useState(false)
-
-  useEffect(() => {
-    let mounted = true
-      ; (async () => {
-        try {
-          const res = await fetch('/api/v1/auth/me', { credentials: 'include' })
-          if (!mounted) return
-          setLoggedIn(res.ok)
-        } catch (e) {
-          if (!mounted) return
-          setLoggedIn(false)
-        }
-      })()
-    return () => { mounted = false }
-  }, [])
+  const { user } = useAuth()
+  const loggedIn = !!user
 
   return (
     <Layout hero={(

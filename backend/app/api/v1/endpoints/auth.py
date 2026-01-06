@@ -6,7 +6,7 @@ from typing import Literal, Optional, cast
 from app import auth
 from app.db import get_db
 from app.services import mailer
-from app.services.user_service import create_user
+from app.services.user_service import create_user, get_user_by_username
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -47,10 +47,14 @@ def _resolve_samesite(value: str | None) -> Optional[CookieSameSite]:
 
 
 @router.post("/login", response_model=TokenOut)
-async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth2_form):
-    # NOTE: 現時点ではDB接続を行わず、受け取った username を subject にしたトークンを返します。
-    # TODO: 実際は DB でユーザ確認、パスワード検証を行うこと。
+async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth2_form, db: AsyncSession = asyncSession):
+    # Validate credentials against the database
     username = form_data.username
+    # lookup user in db
+    user = await get_user_by_username(db, username)
+    # If user not found or password invalid, return 401
+    if not user or not auth.verify_password(form_data.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
     access_token = auth.create_access_token(subject=username, expires_delta=timedelta(minutes=15))
     refresh_token = auth.create_refresh_token(subject=username)
@@ -159,8 +163,14 @@ async def logout(response: Response):
 
 
 @router.get("/me")
-async def me(username: str = Depends(auth.get_current_username)):
-    return {"username": username}
+async def me(db: AsyncSession = asyncSession, username: str = Depends(auth.get_current_username)):
+    # Return basic user info including whether their email is verified.
+    # Frontend should use `email_verified` to decide whether to treat the session
+    # as fully logged-in for protected flows.
+    user = await get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return {"username": user.username, "email": user.email, "email_verified": bool(user.email_verified)}
 
 
 class UpdateIn(BaseModel):
