@@ -46,7 +46,7 @@ def _resolve_samesite(value: str | None) -> Optional[CookieSameSite]:
     return cast(CookieSameSite, v)
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post("/login")
 async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth2_form, db: AsyncSession = asyncSession):
     # Validate credentials against the database
     username = form_data.username
@@ -73,10 +73,11 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = oauth
     csrf_token = secrets.token_urlsafe(32)
     response.set_cookie("csrf_token", csrf_token, httponly=False, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Do not return tokens in JSON; rely on HttpOnly cookies and CSRF cookie.
+    return {"username": user.username, "email": user.email}
 
 
-@router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(response: Response, payload: SignupIn, db: AsyncSession = asyncSession):
     # email is required by the payload type
     try:
@@ -111,10 +112,11 @@ async def signup(response: Response, payload: SignupIn, db: AsyncSession = async
 
         logging.exception("Failed to send confirmation email")
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Do not return tokens in JSON; rely on HttpOnly cookies and CSRF cookie.
+    return {"username": user.username, "email": user.email}
 
 
-@router.post("/refresh", response_model=TokenOut)
+@router.post("/refresh")
 async def refresh(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -131,7 +133,8 @@ async def refresh(request: Request, response: Response):
     cookie_samesite = _resolve_samesite(os.getenv("JWT_COOKIE_SAMESITE", "lax"))
     cookie_domain = os.getenv("JWT_COOKIE_DOMAIN") or None
     response.set_cookie("access_token", access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite, domain=cookie_domain)
-    return {"access_token": access_token, "token_type": "bearer"}
+    # No token in JSON response; client should rely on cookies.
+    return {"detail": "refreshed"}
 
 
 @router.get("/confirm-email")
