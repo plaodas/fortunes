@@ -10,6 +10,7 @@ class JobService:
     def __init__(self, host: str = "redis"):
         self.host = host
 
+    # TODO: job_id と user_id を照合して、他ユーザーのジョブ状況を取得できないようにする
     async def enqueue_analysis(self, *args: Any):
         pool = await create_pool(RedisSettings(host=self.host))
         try:

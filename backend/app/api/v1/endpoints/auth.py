@@ -6,7 +6,7 @@ from typing import Literal, Optional, cast
 from app import auth
 from app.db import get_db
 from app.services import mailer
-from app.services.user_service import create_user, get_user_by_username
+from app.services.user_service import create_user, get_user_by_id, get_user_by_username
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -152,13 +152,13 @@ async def confirm_email(token: str | None = None, db: AsyncSession = asyncSessio
     try:
         user_id = int(subject)
         q = await db.execute(
-            text('UPDATE "user" SET email_verified = TRUE WHERE id = :user_id RETURNING id'),
+            text('UPDATE "users" SET email_verified = TRUE WHERE id = :user_id RETURNING id'),
             {"user_id": user_id},
         )
     except Exception:
         # Fallback: treat subject as username
         q = await db.execute(
-            text('UPDATE "user" SET email_verified = TRUE WHERE username = :username RETURNING id'),
+            text('UPDATE "users" SET email_verified = TRUE WHERE username = :username RETURNING id'),
             {"username": subject},
         )
     row = q.first()
@@ -176,11 +176,11 @@ async def logout(response: Response):
 
 
 @router.get("/me")
-async def me(db: AsyncSession = asyncSession, username: str = Depends(auth.get_current_username)):
+async def me(db: AsyncSession = asyncSession, user_id: int = Depends(auth.get_current_userid)):
     # Return basic user info including whether their email is verified.
     # Frontend should use `email_verified` to decide whether to treat the session
     # as fully logged-in for protected flows.
-    user = await get_user_by_username(db, username)
+    user = await get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return {"username": user.username, "email": user.email, "email_verified": bool(user.email_verified)}
@@ -192,11 +192,11 @@ class UpdateIn(BaseModel):
 
 
 @router.post("/update")
-async def update_profile(payload: UpdateIn, db: AsyncSession = asyncSession, username: str = Depends(auth.get_current_username)):
+async def update_profile(payload: UpdateIn, db: AsyncSession = asyncSession, user_id: int = Depends(auth.get_current_userid)):
     # fetch current user
     from app.services.user_service import get_user_by_email, get_user_by_username
 
-    user = await get_user_by_username(db, username)
+    user = await get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -256,10 +256,8 @@ class ChangePasswordIn(BaseModel):
 
 
 @router.post("/change-password")
-async def change_password(payload: ChangePasswordIn, db: AsyncSession = asyncSession, username: str = Depends(auth.get_current_username)):
-    from app.services.user_service import get_user_by_username
-
-    user = await get_user_by_username(db, username)
+async def change_password(payload: ChangePasswordIn, db: AsyncSession = asyncSession, user_id: int = Depends(auth.get_current_userid)):
+    user = await get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 

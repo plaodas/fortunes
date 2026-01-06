@@ -34,7 +34,7 @@ def test_signup_and_confirm_email(monkeypatch):
 
             # verify DB record is initially unverified
             async with SessionLocal() as session:
-                r = await session.execute(text('SELECT email_verified FROM "user" WHERE username = :username'), {"username": username})
+                r = await session.execute(text('SELECT email_verified FROM "users" WHERE username = :username'), {"username": username})
                 val = r.scalar_one_or_none()
                 assert val is False
 
@@ -44,7 +44,7 @@ def test_signup_and_confirm_email(monkeypatch):
             assert resp2.json().get("detail") == "email confirmed"
 
             async with SessionLocal() as session:
-                r = await session.execute(text('SELECT email_verified FROM "user" WHERE username = :username'), {"username": username})
+                r = await session.execute(text('SELECT email_verified FROM "users" WHERE username = :username'), {"username": username})
                 val = r.scalar_one_or_none()
                 assert val is True
 

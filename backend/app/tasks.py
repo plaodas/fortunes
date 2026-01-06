@@ -21,7 +21,7 @@ from app.services.prompts.template_life_analysis_summary import (
 )
 
 
-async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: str, birth_hour: int, birth_tz: str = "Asia/Tokyo") -> dict[str, Any]:
+async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str, birth_date: str, birth_hour: int, birth_tz: str = "Asia/Tokyo") -> dict[str, Any]:
     """Arq worker task: perform the analysis and persist result.
 
     Returns a dict summary for convenience.
@@ -64,10 +64,10 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
 
             # 結果取得。LOGは別セッションで👇の方で実施
             adapter_detail = litellm_adapter.LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash")  # model="gemini/gemini-2.5-pro"
-            llm_response_detail = await adapter_detail.make_analysis(system_prompt=TEMPLATE_DETAIL_SYSTEM, user_prompt=prompts_detail_user)
+            llm_response_detail = await adapter_detail.make_analysis(user_id=user_id, system_prompt=TEMPLATE_DETAIL_SYSTEM, user_prompt=prompts_detail_user)
 
             adapter_summary = litellm_adapter.LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash-lite")
-            llm_response_summary = await adapter_summary.make_analysis(system_prompt=TEMPLATE_SUMMARY_SYSTEM, user_prompt=prompts_summary_user)
+            llm_response_summary = await adapter_summary.make_analysis(user_id=user_id, system_prompt=TEMPLATE_SUMMARY_SYSTEM, user_prompt=prompts_summary_user)
 
             birth_analysis = {
                 "meishiki": {
@@ -97,6 +97,7 @@ async def process_analysis(ctx: Any, name_sei: str, name_mei: str, birth_date: s
 
             # persist Analysis
             obj = models.Analysis(
+                user_id=user_id,
                 name=name_sei + " " + name_mei,
                 birth_datetime=birth_dt,
                 birth_tz=birth_tz,

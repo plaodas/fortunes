@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app.db import get_db
-from app.services.user_service import get_user_by_id
 from fastapi import Depends, HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -76,7 +75,7 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials") from None
 
 
-async def get_current_username(request: Request, db: AsyncSession = async_session) -> str:
+async def get_current_userid(request: Request, db: AsyncSession = async_session) -> int:
     # Prefer Authorization: Bearer <token> header, fallback to 'access_token' cookie
     auth_header = request.headers.get("Authorization")
     token = None
@@ -98,7 +97,7 @@ async def get_current_username(request: Request, db: AsyncSession = async_sessio
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject") from None
 
-    user = await get_user_by_id(db, user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return user.username
+    # user = await get_user_by_id(db, user_id)
+    # if not user:
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user_id

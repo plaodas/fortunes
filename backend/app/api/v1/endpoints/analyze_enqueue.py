@@ -1,5 +1,5 @@
 # app/api/v1/endpoints/analyze_enqueue.py
-from app import db, models
+from app import auth, db, models
 from app.schemas.inputs.analyze_request import AnalyzeRequest
 from app.services.job_service import JobService
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,11 +13,12 @@ get_db = Depends(db.get_db)
 
 
 @router.post("/enqueue")
-async def analyze_enqueue(req: AnalyzeRequest, db: AsyncSession = get_db) -> dict:
+async def analyze_enqueue(req: AnalyzeRequest, db: AsyncSession = get_db, user_id: int = Depends(auth.get_current_userid)) -> dict:
     if not await validate_kanji_characters(req.name_sei, req.name_mei, db):
         raise HTTPException(status_code=422, detail="One or more characters not found in Kanji table")
 
     job = await job_service.enqueue_analysis(
+        user_id,
         req.name_sei,
         req.name_mei,
         req.birth_date.isoformat(),  # ArqはRedisにジョブ引数をシリアライズして保存するので、"YYYY-MM-DD"形式の文字列として渡す（AnalyzeRequestは日付のバリデーションのためにdate型指定）
