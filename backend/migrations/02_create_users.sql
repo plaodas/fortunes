@@ -1,5 +1,5 @@
 -- Create users table for authentication
-CREATE TABLE IF NOT EXISTS "user" (
+CREATE TABLE IF NOT EXISTS "users" (
     id SERIAL PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     email TEXT UNIQUE,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "user" (
 );
 
 -- Helpful indexes (unique constraints already create indexes for username/email)
-CREATE INDEX IF NOT EXISTS idx_user_username ON "user"(username);
-CREATE INDEX IF NOT EXISTS idx_user_email ON "user"(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON "users"(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON "users"(email);
 
 -- Consider adding a trigger to update `updated_at` on row modification if desired.

@@ -1,5 +1,5 @@
 -- Insert a sample seed entry
-INSERT INTO public."user"
+INSERT INTO public."users"
 (id, username, email, password_hash, display_name, is_active, is_superuser, email_verified, last_login) VALUES
 (1, 'fortunes', 'fortunes@plao-das.com', '$pbkdf2-sha256$29000$9X4vBWBMaa11bq0VgtD6Xw$RSpLgud8N/zBFeBkRW5ypBiwBalEUI5/ko3etCJ/J9k', NULL, true, false, true, NULL);
 INSERT INTO public.analyses
