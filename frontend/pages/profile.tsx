@@ -15,7 +15,7 @@ export default function ProfilePage(): JSX.Element {
 
 
     const router = useRouter()
-    const { logout } = useAuth()
+    const { logout, refresh } = useAuth()
 
     useEffect(() => {
         let mounted = true
@@ -61,19 +61,17 @@ export default function ProfilePage(): JSX.Element {
                 const txt = await res.text()
                 setMessage('更新に失敗しました: ' + txt)
             } else {
-                // parse returned user info; backend returns username/email
+                // parse returned user info; backend returns new token and profile
                 const data = await res.json()
                 setMessage('更新しました')
-                // If the username changed server-side, current JWT subject is stale.
-                if (data.username && data.username !== username) {
-                    // Force logout so user re-authenticates with new username.
-                    setMessage('ユーザー名を変更しました。再ログインしてください。')
-                    try {
-                        await logout()
-                    } catch (e) {
-                        // ignore
-                        router.replace('/login')
-                    }
+                // update local form state with authoritative values
+                if (data.username) setUsername(data.username)
+                if (data.email) setEmail(data.email)
+                // Refresh global auth state so frontend picks up rotated cookies/token
+                try {
+                    await refresh()
+                } catch (e) {
+                    // ignore - user will be redirected if not authenticated
                 }
             }
         } catch (e) {
