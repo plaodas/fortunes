@@ -109,8 +109,13 @@ PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja
 `http://localhost:3000`
 で画面が表示されます
 
-user: fortunes
-password: fortunes33
+user: **fortunes**
+password: **fortunes33**
+
+### メールキャッチャー (開発用)
+開発用にメールキャッチャーを立ち上げています。
+新規登録のメール認証は以下のURLでアクセスできます。
+http://localhost:8025/
 
 <!-- ### 開発: 同一オリジンでの API プロキシ (推奨)
 
