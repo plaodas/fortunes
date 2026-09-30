@@ -3,12 +3,12 @@ import { apiFetch } from '../utils/api'
 import requireAuth from '../utils/ssrAuth'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
-import LoadingOverlay from '../components/LoadingOverlay'
 import FiveElementChart from '../components/FiveElementChart'
 import FiveGridRadarChart from '../components/FiveGridRadarChart'
 import MeishikiCards from '../components/MeishikiCards'
 import TextWithBr from '../components/TextWithBr'
 import TimeZoneSelector from '../components/TimeZoneSelector'
+import { birthCaption, SHICHEN } from '../lib/readingDisplay'
 
 type Meishiki = {
     year?: string
@@ -49,6 +49,7 @@ type NameAnalysis = {
 }
 
 type AnalysisResult = {
+    birth_date: string
     birth_analysis?: BirthAnalysis
     name_analysis?: NameAnalysis
     summary: string
@@ -72,7 +73,7 @@ export default function Analysis(): JSX.Element {
     const [name_sei, setNameSei] = useState<string>('')
     const [name_mei, setNameMei] = useState<string>('')
     const [date, setDate] = useState<string>('1990-01-01')
-    const [hour, setHour] = useState<number>(12)
+    const [hour, setHour] = useState<number>(11)
     const [nameSeiError, setNameSeiError] = useState<string | null>(null)
     const [nameMeiError, setNameMeiError] = useState<string | null>(null)
     const [dateError, setDateError] = useState<string | null>(null)
@@ -81,24 +82,24 @@ export default function Analysis(): JSX.Element {
     const [selected, setSelected] = useState<AnalysisOut | null>(null)
     const [loading, setLoading] = useState<boolean>(false)
     const [birthTz, setBirthTz] = useState<string>('Asia/Tokyo')
+    const [abroad, setAbroad] = useState<boolean>(false)
     const [sex, setSex] = useState<string>('')
+    const [storyError, setStoryError] = useState<string | null>(null)
+    const [elapsed, setElapsed] = useState<number>(0)
 
     const isFormValid = !nameSeiError && !nameMeiError && !dateError && name_sei.trim().length > 0 && name_mei.trim().length > 0 && (sex === 'male' || sex === 'female')
 
     useEffect(() => {
         fetchHistory()
     }, [])
-    // set client timezone after mount to avoid SSR/client mismatch
+
     useEffect(() => {
-        if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
-            try {
-                const tz = Intl.DateTimeFormat().resolvedOptions?.().timeZone
-                if (tz) setBirthTz(tz)
-            } catch (e) {
-                // ignore
-            }
-        }
-    }, [])
+        if (!loading) return
+        setElapsed(0)
+        const started = Date.now()
+        const id = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000)
+        return () => window.clearInterval(id)
+    }, [loading])
     function runValidation() {
         // name: at least 2 characters
         const name_sei_length = name_sei.trim().length
@@ -134,8 +135,8 @@ export default function Analysis(): JSX.Element {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [name_sei, name_mei, date])
 
-    async function submit(e: React.FormEvent) {
-        e.preventDefault()
+    async function submit(e?: React.FormEvent) {
+        e?.preventDefault()
 
         // synchronous local validation to decide whether to submit
         const nameSeiValid = name_sei.trim().length > 0 && name_sei.trim().length <= 50
@@ -149,9 +150,9 @@ export default function Analysis(): JSX.Element {
             return
         }
 
+        setStoryError(null)
         setLoading(true)
         try {
-            // Enqueue job
             const enqueueRes = await apiFetch('/api/v1/analyze/enqueue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -159,83 +160,83 @@ export default function Analysis(): JSX.Element {
             })
 
             if (!enqueueRes.ok) {
-                // If backend returns 422, show the detail field to the user as-is
                 if (enqueueRes.status === 422) {
                     try {
                         const data: any = await enqueueRes.json()
-                        const detail = data?.detail ?? JSON.stringify(data)
-                        alert(detail)
-                        setLoading(false)
+                        setStoryError(data?.detail ?? JSON.stringify(data))
                         return
                     } catch (e) {
                         // fall through to generic handling
                     }
                 }
-
                 const text = await enqueueRes.text()
                 console.warn('enqueue failed', text)
                 throw new Error(text || 'enqueue failed')
             }
 
-            const { job_id } = await enqueueRes.json()
-            // poll job status until complete (or timeout)
-            const apiBase = '/api/v1'
-            const timeoutMs = 1_200_000 // 20 minutes
-            const intervalMs = 5_000 // 5 seconds
+            const data = await enqueueRes.json()
+            setResult({
+                birth_date: date,
+                birth_analysis: {
+                    meishiki: data.result_birth?.meishiki,
+                    gogyo: data.result_birth?.gogyo,
+                },
+                name_analysis: data.result_name,
+                summary: '',
+                detail: '',
+            })
 
-            const start = Date.now()
-            let finalResult: any = null
-
-            while (Date.now() - start < timeoutMs) {
-                await new Promise((r) => setTimeout(r, intervalMs))
-                try {
-                    const st = await apiFetch(`${apiBase}/jobs/${job_id}`)
-                    if (!st.ok) {
-                        // continue polling on transient errors
-                        continue
-                    }
-                    const body = await st.json()
-                    // status may be like "JobStatus.complete" or "complete"
-                    const status = String(body.status)
-                    if (status.includes('complete')) {
-                        finalResult = body.result
-                        break
-                    }
-                } catch (e) {
-                    // ignore and continue polling
-                }
+            const outcome = await pollJob(data.job_id)
+            if (outcome === 'error') {
+                setStoryError('物語を作成できませんでした。もう一度お試しください。')
+                return
             }
-
-            // finalResultが空のオブジェクトだった場合もエラー扱いとする
-            if (finalResult === null || (typeof finalResult === 'object' && Object.keys(finalResult).length === 0)) {
-                alert('鑑定中にエラーが発生しました。後でもう一度お試しください。')
-            } else {
-                // refresh history and select + show the new record if available
-                const arr = await fetchHistory()
-                if (finalResult && finalResult.id && arr) {
-                    const id = Number(finalResult.id)
-                    const found = arr.find((h) => h.id === id)
-                    if (found) {
-                        // setSelected(found)
-                        setResult({
-                            birth_analysis: {
-                                meishiki: found.result_birth?.meishiki,
-                                gogyo: found.result_birth?.gogyo,
-                                summary: found.summary,
-                            },
-                            name_analysis: found.result_name,
-                            summary: found.summary || '',
-                            detail: found.detail || '',
-                        })
-                    }
-                }
+            const arr = await fetchHistory()
+            const found = arr?.find((h) => h.id === outcome.id)
+            if (!found) {
+                setStoryError('物語を作成できませんでした。もう一度お試しください。')
+                return
             }
+            setResult({
+                birth_date: found.birth_date,
+                birth_analysis: {
+                    meishiki: found.result_birth?.meishiki,
+                    gogyo: found.result_birth?.gogyo,
+                    summary: found.summary,
+                },
+                name_analysis: found.result_name,
+                summary: found.summary || '',
+                detail: found.detail || '',
+            })
         } catch (err) {
             console.warn('analyze error', err)
-            alert('鑑定中にエラーが発生しました。後でもう一度お試しください。')
+            setStoryError('物語を作成できませんでした。もう一度お試しください。')
         } finally {
             setLoading(false)
         }
+    }
+
+    async function pollJob(jobId: string): Promise<{ id: number } | 'error'> {
+        const timeoutMs = 1_200_000
+        const intervalMs = 5_000
+        const start = Date.now()
+        while (Date.now() - start < timeoutMs) {
+            await new Promise((r) => setTimeout(r, intervalMs))
+            try {
+                const st = await apiFetch(`/api/v1/jobs/${jobId}`)
+                if (!st.ok) continue
+                const body = await st.json()
+                const status = String(body.status)
+                if (status.includes('not_found')) return 'error'
+                if (!status.includes('complete')) continue
+                const finished = body.result
+                if (finished && typeof finished === 'object' && finished.id) return { id: Number(finished.id) }
+                return 'error'
+            } catch (e) {
+                // keep polling
+            }
+        }
+        return 'error'
     }
 
     async function fetchHistory(): Promise<AnalysisOut[] | null> {
@@ -326,8 +327,8 @@ export default function Analysis(): JSX.Element {
                                 onChange={(e) => setHour(Number(e.target.value))}
                                 required
                             >
-                                {Array.from({ length: 24 }).map((_, i) => (
-                                    <option key={i} value={String(i)}>{i}時</option>
+                                {SHICHEN.map((item) => (
+                                    <option key={item.branch} value={String(item.hour)}>{item.branch}（{item.range}）</option>
                                 ))}
                             </select>
                         </div>
@@ -345,7 +346,21 @@ export default function Analysis(): JSX.Element {
                                 <option value="female">女性</option>
                             </select>
                         </div>
-                        <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />
+                        <div className="form-row">
+                            <label htmlFor="abroad">
+                                <input
+                                    id="abroad"
+                                    type="checkbox"
+                                    checked={abroad}
+                                    onChange={(e) => {
+                                        setAbroad(e.target.checked)
+                                        if (!e.target.checked) setBirthTz('Asia/Tokyo')
+                                    }}
+                                />
+                                日本以外で生まれた
+                            </label>
+                        </div>
+                        {abroad && <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />}
                         <div className="form-action" style={{ alignSelf: 'end' }}>
                             <button className="btn" type="submit" disabled={!isFormValid || loading}>鑑定する</button>
                         </div>
@@ -353,26 +368,40 @@ export default function Analysis(): JSX.Element {
                 </form>
             </div>
         )}>
-            {loading && <LoadingOverlay />}
-
-            {result && (
+            {(result || storyError) && (
                 <section style={{ marginTop: 16 }}>
                     <div className="card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h2 className="text-2xl font-bold">鑑定結果</h2>
                         </div>
-                        <div className="meishiki-cards">
-                            <MeishikiCards analysis={result.birth_analysis?.meishiki} />
+                        {loading && (
+                            <p className="story-pending" role="status" aria-live="polite">
+                                <span className="story-pending-spin" aria-hidden="true" />
+                                物語を作成中です（{elapsed}秒）
+                            </p>
+                        )}
+                        <div className="detail">
+                            {storyError && (
+                                <div className="story-status">
+                                    <p>{storyError}</p>
+                                    <button type="button" className="btn" onClick={() => submit()}>もう一度作成する</button>
+                                </div>
+                            )}
+                            {result?.detail ? <TextWithBr text={result.detail} /> : null}
                         </div>
-                        <div className="chart">
-                            <FiveElementChart analysis={result.birth_analysis?.gogyo} />
-                        </div>
-                        <div className="chart">
-                            <FiveGridRadarChart analysis={result.name_analysis} />
-                        </div>
-                        <div className="detail" style={{ marginTop: 50 }}>
-                            <TextWithBr text={result.detail} />
-                        </div>
+                        {result && (
+                            <>
+                                <div className="meishiki-cards">
+                                    <MeishikiCards analysis={result.birth_analysis?.meishiki} birthDate={result.birth_date} />
+                                </div>
+                                <div className="chart">
+                                    <FiveElementChart analysis={result.birth_analysis?.gogyo} />
+                                </div>
+                                <div className="chart">
+                                    <FiveGridRadarChart analysis={result.name_analysis} />
+                                </div>
+                            </>
+                        )}
                     </div>
                 </section>
             )}
@@ -405,7 +434,7 @@ export default function Analysis(): JSX.Element {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
                                         <strong>{h.name}</strong>
-                                        <div className="muted">{h.birth_date} · {h.birth_hour}時({h.birth_tz}) 生まれ </div>
+                                        <div className="muted">{birthCaption(h.birth_date, h.birth_hour, h.birth_tz)}</div>
                                     </div>
                                 </div>
                                 <div className="summary">
@@ -419,19 +448,19 @@ export default function Analysis(): JSX.Element {
             {selected && (
                 <Modal title={<>
                     <div>{selected.name}</div>
-                    <div className="muted">{selected.birth_date} · {selected.birth_hour}時({selected.birth_tz}) 生まれ</div>
+                    <div className="muted">{birthCaption(selected.birth_date, selected.birth_hour, selected.birth_tz)}</div>
                 </>} onClose={() => setSelected(null)}>
+                    <div className="detail">
+                        <TextWithBr text={selected.detail} />
+                    </div>
                     <div className="meishiki-cards">
-                        <MeishikiCards analysis={selected.result_birth?.meishiki} />
+                        <MeishikiCards analysis={selected.result_birth?.meishiki} birthDate={selected.birth_date} />
                     </div>
                     <div className="chart">
                         <FiveElementChart analysis={selected.result_birth?.gogyo} />
                     </div>
                     <div className="chart">
                         <FiveGridRadarChart analysis={selected.result_name} />
-                    </div>
-                    <div className="detail" style={{ marginTop: 50 }}>
-                        <TextWithBr text={selected.detail} />
                     </div>
                 </Modal>
             )}

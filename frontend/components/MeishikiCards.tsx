@@ -1,4 +1,5 @@
 import React from 'react'
+import { currentDaiunIndex } from '../lib/readingDisplay'
 
 
 type PillarDetail = {
@@ -29,6 +30,7 @@ type Meishiki = {
 
 type Props = {
   analysis?: Meishiki | null
+  birthDate?: string
   height?: number
 }
 
@@ -39,8 +41,9 @@ const PILLARS: { key: 'year' | 'month' | 'day' | 'hour'; label: string }[] = [
   { key: 'hour', label: '時柱' },
 ]
 
-export default function MeishikiCards({ analysis }: Props) {
+export default function MeishikiCards({ analysis, birthDate }: Props) {
   if (!analysis) return null
+  const current = birthDate && analysis.daiun ? currentDaiunIndex(analysis.daiun, birthDate) : -1
 
   return (
     <div>
@@ -63,8 +66,10 @@ export default function MeishikiCards({ analysis }: Props) {
           <div className="mt-3">
             <h4 className="text-sm font-semibold">大運</h4>
             <ul className="mt-1 text-sm text-slate-700">
-              {analysis.daiun.map((row) => (
-                <li key={row.start}>{row.start} {row.kanshi}（{row.tsuhen}）</li>
+              {analysis.daiun.map((row, index) => (
+                <li key={row.start} className={index === current ? 'daiun-current' : undefined}>
+                  {row.start} {row.kanshi}（{row.tsuhen}）{index === current ? ' いま' : ''}
+                </li>
               ))}
             </ul>
           </div>
