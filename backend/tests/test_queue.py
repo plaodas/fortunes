@@ -41,7 +41,7 @@ async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch, l
                     self.chars = chars
 
                 def fetchall(self):
-                    return [(models.Kanji(char=c),) for c in self.chars]
+                    return [(models.Kanji(char=c, strokes_kangxi=4),) for c in self.chars]
 
             # Extract the characters being queried from the statement
             queried_chars = stmt._whereclause.right.value
@@ -54,7 +54,7 @@ async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch, l
 
     app.dependency_overrides[db_module.get_db] = fake_get_db
     try:
-        r = await logged_in_client.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12})
+        r = await logged_in_client.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12, "sex": "female"})
         assert r.status_code == 200
         assert r.json().get("job_id") == "fake-job-1"
     finally:
@@ -164,6 +164,7 @@ def fake_session() -> type:
                 def __init__(self, ch):
                     self.char = ch
                     self.strokes_min = 4 if ch == "太" else 9
+                    self.strokes_kangxi = self.strokes_min
 
             return K(key)
 
@@ -196,7 +197,7 @@ def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> t
 
 @pytest.mark.anyio
 async def test_process_analysis_creates_and_returns_id(fake_llm, fake_session_local) -> None:
-    res = await tasks_module.process_analysis(1, {}, "太", "郎", "1990-01-01", 12)
+    res = await tasks_module.process_analysis(1, {}, "太", "郎", "1990-01-01", 12, "male")
 
     assert isinstance(res, dict)
     assert res.get("id") == 99999

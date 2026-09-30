@@ -30,6 +30,7 @@ class Kanji(Base):
     strokes_text: Mapped[str] = mapped_column(Text, nullable=True)
     strokes_min: Mapped[int] = mapped_column(Integer, nullable=True)
     strokes_max: Mapped[int] = mapped_column(Integer, nullable=True)
+    strokes_kangxi: Mapped[int] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(Text, nullable=True)
 
 

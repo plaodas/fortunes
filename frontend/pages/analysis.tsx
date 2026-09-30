@@ -15,6 +15,14 @@ type Meishiki = {
     month?: string
     day?: string
     hour?: string
+    strength?: string
+    pillars?: {
+        year?: { tsuhen?: string; juniun?: string }
+        month?: { tsuhen?: string; juniun?: string }
+        day?: { tsuhen?: string; juniun?: string }
+        hour?: { tsuhen?: string; juniun?: string }
+    }
+    daiun?: { start: string; kanshi: string; tsuhen: string }[]
 }
 
 type Gogyo = {
@@ -73,8 +81,9 @@ export default function Analysis(): JSX.Element {
     const [selected, setSelected] = useState<AnalysisOut | null>(null)
     const [loading, setLoading] = useState<boolean>(false)
     const [birthTz, setBirthTz] = useState<string>('Asia/Tokyo')
+    const [sex, setSex] = useState<string>('')
 
-    const isFormValid = !nameSeiError && !nameMeiError && !dateError && name_sei.trim().length > 0 && name_mei.trim().length > 0
+    const isFormValid = !nameSeiError && !nameMeiError && !dateError && name_sei.trim().length > 0 && name_mei.trim().length > 0 && (sex === 'male' || sex === 'female')
 
     useEffect(() => {
         fetchHistory()
@@ -146,7 +155,7 @@ export default function Analysis(): JSX.Element {
             const enqueueRes = await apiFetch('/api/v1/analyze/enqueue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour), birth_tz: birthTz }),
+                body: JSON.stringify({ name_sei, name_mei, birth_date: date, birth_hour: Number(hour), birth_tz: birthTz, sex }),
             })
 
             if (!enqueueRes.ok) {
@@ -263,7 +272,7 @@ export default function Analysis(): JSX.Element {
     return (
         <Layout hero={(
             <div className="hero card">
-                <p className="" style={{ marginTop: 8 }}>お名前と生年月日、生まれた時間を入力して［鑑定する］ボタンを押してください</p>
+                <p className="" style={{ marginTop: 8 }}>お名前と生年月日、生まれた時間、性別を入力して［鑑定する］ボタンを押してください</p>
                 <form onSubmit={submit} style={{ marginTop: 8 }}>
                     <div className="form-grid">
                         <div className="form-row">
@@ -320,6 +329,20 @@ export default function Analysis(): JSX.Element {
                                 {Array.from({ length: 24 }).map((_, i) => (
                                     <option key={i} value={String(i)}>{i}時</option>
                                 ))}
+                            </select>
+                        </div>
+                        <div className="form-row">
+                            <label htmlFor="sex">性別</label>
+                            <select
+                                id="sex"
+                                className="input"
+                                value={sex}
+                                onChange={(e) => setSex(e.target.value)}
+                                required
+                            >
+                                <option value="">選択してください</option>
+                                <option value="male">男性</option>
+                                <option value="female">女性</option>
                             </select>
                         </div>
                         <TimeZoneSelector birthTz={birthTz} setBirthTz={setBirthTz} />

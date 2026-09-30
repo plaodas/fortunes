@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -10,3 +10,4 @@ class AnalyzeRequest(BaseModel):
     birth_date: date  # parsed from "YYYY-MM-DD"
     birth_hour: Annotated[int, Field(ge=0, le=23)]
     birth_tz: Annotated[str, Field(min_length=1, max_length=100)] = "Asia/Tokyo"
+    sex: Literal["male", "female"]

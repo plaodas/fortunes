@@ -13,6 +13,7 @@ AIに渡す前の“構造化された鑑定データ” を作ります。
 # 0. 必要なインポート
 from typing import Any
 
+from app.services.calc_stars import body_strength, hidden_stem_names, ten_god, twelve_stage
 from app.services.constants import (
     BRANCH_TRAITS,
     KEY_MAP,
@@ -79,7 +80,7 @@ def interpret_wuxing(balance: dict[str, int], day_stem: str):
 
 # 3. 四柱＋五行を統合した総合鑑定ロジック
 # ここが今回のメインです。
-def synthesize_reading(meishiki: dict[str, str], balance: dict[str, int]) -> dict[str, Any]:
+def synthesize_reading(meishiki: dict[str, str], balance: dict[str, int], daiun: list[dict[str, str]] | None = None) -> dict[str, Any]:
     """
     arg:
       meishiki: {"年柱":"乙卯", "月柱":"戊寅", "日柱":"辛巳", "時柱":"乙卯"}
@@ -92,7 +93,13 @@ def synthesize_reading(meishiki: dict[str, str], balance: dict[str, int]) -> dic
     day_stem = meishiki["日柱"][0]
 
     # 四柱の解釈
-    pillar_interpretations = {name: interpret_pillar(name, kanshi) for name, kanshi in meishiki.items()}
+    pillar_interpretations = {}
+    for name, kanshi in meishiki.items():
+        info = interpret_pillar(name, kanshi)
+        info["通変星"] = ten_god(day_stem, kanshi[0])
+        info["十二運"] = twelve_stage(day_stem, kanshi[1])
+        info["蔵干"] = "・".join(hidden_stem_names(kanshi[1]))
+        pillar_interpretations[name] = info
 
     # 五行バランスの解釈
     wuxing_interpretation = interpret_wuxing(balance, day_stem)
@@ -101,6 +108,8 @@ def synthesize_reading(meishiki: dict[str, str], balance: dict[str, int]) -> dic
     summary = {
         "四柱": pillar_interpretations,
         "五行": wuxing_interpretation,
+        "身強身弱": body_strength(meishiki),
+        "大運": daiun or [],
         "総合テーマ": {
             "性格": wuxing_interpretation["性格傾向"],
             "課題": wuxing_interpretation["課題"],

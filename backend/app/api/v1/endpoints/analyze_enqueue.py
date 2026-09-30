@@ -15,7 +15,7 @@ get_db = Depends(db.get_db)
 @router.post("/enqueue")
 async def analyze_enqueue(req: AnalyzeRequest, db: AsyncSession = get_db, user_id: int = Depends(auth.get_current_userid)) -> dict:
     if not await validate_kanji_characters(req.name_sei, req.name_mei, db):
-        raise HTTPException(status_code=422, detail="One or more characters not found in Kanji table")
+        raise HTTPException(status_code=422, detail="康熙画数が不明な文字があるため鑑定できません")
 
     job = await job_service.enqueue_analysis(
         user_id,
@@ -23,6 +23,7 @@ async def analyze_enqueue(req: AnalyzeRequest, db: AsyncSession = get_db, user_i
         req.name_mei,
         req.birth_date.isoformat(),  # ArqはRedisにジョブ引数をシリアライズして保存するので、"YYYY-MM-DD"形式の文字列として渡す（AnalyzeRequestは日付のバリデーションのためにdate型指定）
         int(req.birth_hour),
+        req.sex,
         req.birth_tz,
     )
     if job is None:
@@ -38,5 +39,5 @@ async def validate_kanji_characters(name_sei: str, name_mei: str, db: AsyncSessi
     stmt = select(models.Kanji).where(models.Kanji.char.in_(chars))
     kanji = await db.execute(stmt)
     # 取得文字数がcharsの長さと一致しなければ存在しない文字があると判断
-    stored_chars = {row[0].char for row in kanji.fetchall()}
-    return len(stored_chars) == len(chars)
+    stored = {row[0].char: row[0] for row in kanji.fetchall()}
+    return all(ch in stored and stored[ch].strokes_kangxi is not None for ch in chars)

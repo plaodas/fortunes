@@ -11,6 +11,7 @@ from app.services.calc_birth_analysis import synthesize_reading
 from app.services.calc_gogyo import calc_wuxing_balance
 from app.services.calc_meishiki import get_meishiki
 from app.services.calc_name_analysis import get_gogaku
+from app.services.calc_stars import calc_daiun
 from app.services.make_story import render_life_analysis
 from app.services.prompts.template_life_analysis import (
     TEMPLATE_DETAIL_SYSTEM,
@@ -34,7 +35,7 @@ def llm_target() -> tuple[str, str]:
     return provider, raw_model
 
 
-async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str, birth_date: str, birth_hour: int, birth_tz: str = "Asia/Tokyo") -> dict[str, Any]:
+async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str, birth_date: str, birth_hour: int, sex: str, birth_tz: str = "Asia/Tokyo") -> dict[str, Any]:
     """Arq worker task: perform the analysis and persist result.
 
     Returns a dict summary for convenience.
@@ -50,7 +51,8 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
 
     meishiki = get_meishiki(dt=birth_dt)
     gogyo_balance = calc_wuxing_balance(meishiki)
-    birth_analysis = synthesize_reading(meishiki, gogyo_balance)
+    daiun = calc_daiun(birth_dt, sex, meishiki["年柱"][0], meishiki["月柱"], meishiki["日柱"][0])
+    birth_analysis = synthesize_reading(meishiki, gogyo_balance, daiun=daiun)
 
     # fetch kanji strokes using async session
     async with db.SessionLocal() as session:
@@ -63,7 +65,9 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
                         continue
                     c = ch[0]
                     k = await session.get(models.Kanji, c)
-                    out.append((ch, int(k.strokes_min) if (k and k.strokes_min is not None) else 0))
+                    if k is None or k.strokes_kangxi is None:
+                        raise ValueError(f"康熙画数がありません: {c}")
+                    out.append((ch, int(k.strokes_kangxi)))
                 return out
 
             strokes_sei = await _get_strokes(list(name_sei))
@@ -80,6 +84,7 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
             detail_text = llm_response_detail.response_text if llm_response_detail else ""
             summary_text = summarize_detail(detail_text) if detail_text else None
 
+            pillars = birth_analysis["四柱"]
             birth_analysis = {
                 "meishiki": {
                     "year": meishiki.get("年柱"),
@@ -87,6 +92,17 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
                     "day": meishiki.get("日柱"),
                     "hour": meishiki.get("時柱"),
                     "summary": "",
+                    "strength": birth_analysis["身強身弱"],
+                    "sex": sex,
+                    "pillars": {
+                        key: {
+                            "kanshi": pillars[name]["干支"],
+                            "tsuhen": pillars[name]["通変星"],
+                            "juniun": pillars[name]["十二運"],
+                        }
+                        for key, name in (("year", "年柱"), ("month", "月柱"), ("day", "日柱"), ("hour", "時柱"))
+                    },
+                    "daiun": [{"start": row["開始"], "kanshi": row["干支"], "tsuhen": row["通変星"]} for row in birth_analysis["大運"]],
                 },
                 "gogyo": {
                     "wood": gogyo_balance.get("木", 0),
