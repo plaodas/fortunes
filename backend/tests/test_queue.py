@@ -56,7 +56,10 @@ async def test_analyze_enqueue_returns_job_id(monkeypatch: pytest.MonkeyPatch, l
     try:
         r = await logged_in_client.post(URL_PREFIX + "/analyze/enqueue", json={"name_sei": "太", "name_mei": "郎", "birth_date": "1990-01-01", "birth_hour": 12, "sex": "female"})
         assert r.status_code == 200
-        assert r.json().get("job_id") == "fake-job-1"
+        body = r.json()
+        assert body.get("job_id") == "fake-job-1"
+        assert body["result_birth"]["meishiki"]["daiun"]
+        assert "tenkaku" in body["result_name"]
     finally:
         app.dependency_overrides.pop(db_module.get_db, None)
 
