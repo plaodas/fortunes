@@ -182,9 +182,10 @@ docker compose up --build -d
 
 ### 開発環境用ツールのインストール
 - リンター、コードフォーマッターを使用しています
-pre-commitでコミット時に実行するので、ホストOSで以下のコマンドを実行してインストールしてください
+pre-commitでコミット時に実行するので、ホストOSで以下のコマンドを実行してインストールしてください。Cursor のコミットもこのフックを通ります。チェックは CI と同じで、`ruff format`、`isort`、`black` の順です。
 ```
 pip install -r backend/dev-requirements.txt
+pre-commit install
 ```
 
 ## その他・メモ

@@ -45,11 +45,7 @@ def _sun_longitude(jd: float) -> float:
     t = (jd - 2451545.0) / 36525.0
     mean_long = 280.46646 + 36000.76983 * t + 0.0003032 * t * t
     mean_anom = math.radians(357.52911 + 35999.05029 * t - 0.0001537 * t * t)
-    center = (
-        (1.914602 - 0.004817 * t - 0.000014 * t * t) * math.sin(mean_anom)
-        + (0.019993 - 0.000101 * t) * math.sin(2 * mean_anom)
-        + 0.000289 * math.sin(3 * mean_anom)
-    )
+    center = (1.914602 - 0.004817 * t - 0.000014 * t * t) * math.sin(mean_anom) + (0.019993 - 0.000101 * t) * math.sin(2 * mean_anom) + 0.000289 * math.sin(3 * mean_anom)
     omega = math.radians(125.04 - 1934.136 * t)
     return (mean_long + center - 0.00569 - 0.00478 * math.sin(omega)) % 360
 

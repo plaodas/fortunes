@@ -13,7 +13,12 @@ AIに渡す前の“構造化された鑑定データ” を作ります。
 # 0. 必要なインポート
 from typing import Any
 
-from app.services.calc_stars import body_strength, hidden_stem_names, ten_god, twelve_stage
+from app.services.calc_stars import (
+    body_strength,
+    hidden_stem_names,
+    ten_god,
+    twelve_stage,
+)
 from app.services.constants import (
     BRANCH_TRAITS,
     KEY_MAP,
