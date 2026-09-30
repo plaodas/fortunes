@@ -171,7 +171,7 @@ export default function Analysis(): JSX.Element {
             const { job_id } = await enqueueRes.json()
             // poll job status until complete (or timeout)
             const apiBase = '/api/v1'
-            const timeoutMs = 300_000 // 5 minutes
+            const timeoutMs = 1_200_000 // 20 minutes
             const intervalMs = 5_000 // 5 seconds
 
             const start = Date.now()

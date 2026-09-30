@@ -96,13 +96,16 @@ async def test_get_job_status_returns_complete_and_result(monkeypatch: pytest.Mo
 
 
 @pytest.fixture
-def fake_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+def fake_llm(monkeypatch: pytest.MonkeyPatch) -> type:
     class FakeLLMResponse:
+        call_count = 0
+
         def __init__(self, provider, model):
             self.provider = provider
             self.model = model
 
         async def make_analysis(self, user_id: int, system_prompt: str, user_prompt: str) -> LLMResponse:
+            FakeLLMResponse.call_count += 1
             message = {
                 "role": "assistant",
                 "images": [],
@@ -127,22 +130,26 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch) -> None:
                 model_version=None,
                 response_id="4AtKaYDXNIWU1e8P1v6H-A0",
                 prompt_hash=None,
-                response_text="人生という桃源郷を巡る旅の途中…",
+                response_text=("桃" * 180) + "\n\nつづきの段落",
                 usage={"completion_tokens": 78, "completion_tokens_details": None},
                 raw=raw,
                 created_at="2025-12-23 03:26:25.385178+00",
             )
 
+    FakeLLMResponse.call_count = 0
     monkeypatch.setattr(
         tasks_module.litellm_adapter,
         "LiteLlmAdapter",
         FakeLLMResponse,
     )
+    return FakeLLMResponse
 
 
 @pytest.fixture
 def fake_session() -> type:
     class FakeSession:
+        added_objects: list[Any] = []
+
         def __init__(self):
             self.added = None
 
@@ -163,6 +170,7 @@ def fake_session() -> type:
         def add(self, obj):
             obj.id = 99999
             self.added = obj
+            FakeSession.added_objects.append(obj)
 
         async def commit(self):
             return
@@ -173,15 +181,17 @@ def fake_session() -> type:
         async def close(self):
             return
 
+    FakeSession.added_objects = []
     return FakeSession
 
 
 @pytest.fixture
-def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> None:
+def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> type:
     def fake_sessionlocal():
         return fake_session()
 
     monkeypatch.setattr(tasks_module.db, "SessionLocal", fake_sessionlocal)
+    return fake_session
 
 
 @pytest.mark.anyio
@@ -191,3 +201,12 @@ async def test_process_analysis_creates_and_returns_id(fake_llm, fake_session_lo
     assert isinstance(res, dict)
     assert res.get("id") == 99999
     assert "name" in res
+    assert fake_llm.call_count == 1
+
+    analyses = [obj for obj in fake_session_local.added_objects if isinstance(obj, models.Analysis)]
+    llm_logs = [obj for obj in fake_session_local.added_objects if isinstance(obj, models.LLMResponse)]
+    assert len(analyses) == 1
+    assert len(llm_logs) == 1
+    detail = analyses[0].detail or ""
+    assert analyses[0].summary == detail.splitlines()[0][:150]
+    assert len(analyses[0].summary) == 150

@@ -25,6 +25,7 @@ AI駆動開発の練習用として不慣れなPython／FastAPI、React/Next.js�
 - frontend: node, react, next
 - backend: python, fastapi
 - worker: python, arq
+- ollama: ローカル LLM（CPU）
 - redis: redis
 - db: poatgresql
 
@@ -55,9 +56,10 @@ flowchart TD
     db["`db（postgresql）
       🔵鑑定履歴保存
     `"]
+    ollama["`ollama
+      🔵ローカルLLM（CPU）
+    `"]
   end
-  openai("OpenAI API")
-  google("Google Gemini API")
   monitor("`[未実装] 監視・ログ
     APIレスポンス時間/エラー率
     モデル別コスト／トークン使用量
@@ -70,25 +72,32 @@ flowchart TD
   worker <--> redis
   backend <--> db
   backend --> monitor
-  backend <--> openai
-  backend <--> google
+  worker <--> ollama
 
   %% 幅を指定するクラス定義（pxで指定）
 
   classDef wideCard stroke:#333,stroke-width:1px
   class * wideCard
   classDef dev fill:#fff,stroke:#333,stroke-width:2px,width:400px;text-align:center
-  class frontend,backend,worker,redis,db dev
+  class frontend,backend,worker,redis,db,ollama dev
 
 ```
 
 
 ## 設定方法
 
-### APIキー 設定
-1. [Google AI Studio](https://aistudio.google.com/)でAPI keyを取得してください。
-2. REPOルートの`.env.sample`を`.env`にファイル名変更
-3. `GEMINI_API_KEY=`に `1.` で取得したキーをコピーして貼り付けます
+### ローカルLLM（Ollama）
+鑑定文は Compose 内の Ollama で生成します。API キーは不要です。
+
+1. REPOルートの`.env.sample`を`.env`にファイル名変更
+2. 既定モデルは `qwen2.5:7b`（量子化でおよそ 6〜8GB）。メモリが足りないときは `.env` の `OLLAMA_MODEL=qwen2.5:3b` に変える
+3. 下の `docker compose up` で `ollama-pull` がモデルを取得してから worker が起動する
+
+モデルを手動で取り直す場合:
+
+```bash
+docker compose exec ollama ollama pull qwen2.5:7b
+```
 
 ### コンテナ起動、マイグレーション
 .envの値を適宜変更したら、以下のコマンドを実行します。
@@ -171,14 +180,13 @@ docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
 
 ### LLMのモデル
 
-鑑定文作成とサマリ作成で使用するモデルを分けています。
-- 鑑定文作成： gemini-2.5-flash
-- サマリ作成： gemini-2.5-flash-lite
+鑑定文は Ollama の 1 モデルを 1 回だけ呼んで作ります。履歴用の短いサマリは、その詳細文の先頭段落を 150 文字で切ったものです。
 
-鑑定文は表現力が必要なので、`gemini-2.5-pro`やOpenAIの`GPT-4o`のようなモデルがおすすめです。この環境では無料枠があるgemini-2.5-flashを使用しています。
-サマリ作成は表現力が問われないので、`gemini-2.5-flash-lite`のような軽くて安価なモデルがよいです。
+- 既定モデル: `qwen2.5:7b`（`OLLAMA_MODEL`）
+- 接続先: `http://ollama:11434`（`OLLAMA_API_BASE`）。LiteLLM が `ollama/<model>` として呼びます
+- 詳細文の目標は 600〜800 文字です。プロンプトは[鑑定文](backend/app/services/prompts/template_life_analysis.py)
 
-プロンプトも[鑑定文](backend/app/services/prompts/template_life_analysis.py)と[サマリ](backend/app/services/prompts/template_life_analysis_summary.py)で分けています
+メモリが足りないときは `OLLAMA_MODEL=qwen2.5:3b` にして、`docker compose up -d` で pull し直します。
 
 
 
