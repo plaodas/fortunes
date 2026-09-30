@@ -22,7 +22,7 @@ class LiteLlmAdapter:
     ):
         self.provider: str = provider
         self.model: str = model
-        os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
+        self.api_base: str = os.getenv("OLLAMA_API_BASE", "http://ollama:11434")
 
     async def make_analysis(self, user_id: int, system_prompt: str, user_prompt: str) -> models.LLMResponse:
         return await self._generate(
@@ -48,7 +48,7 @@ class LiteLlmAdapter:
             - messages: list[dict[str, str]]
         """
         temperature: float = llm_param.get("temperature", 0.8)
-        num_retries: int = llm_param.get("num_retries", 3)
+        num_retries: int = llm_param.get("num_retries", 1)
         messages: list[dict[str, str]] = llm_param["messages"]
 
         try:
@@ -96,6 +96,9 @@ class LiteLlmAdapter:
             messages=messages,
             temperature=temperature,
             num_retries=num_retries,
+            timeout=900,
+            max_tokens=1200,
+            api_base=self.api_base,
         )
         return completion_return
 

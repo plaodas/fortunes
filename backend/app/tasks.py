@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -15,10 +16,22 @@ from app.services.prompts.template_life_analysis import (
     TEMPLATE_DETAIL_SYSTEM,
     TEMPLATE_DETAIL_USER,
 )
-from app.services.prompts.template_life_analysis_summary import (
-    TEMPLATE_SUMMARY_SYSTEM,
-    TEMPLATE_SUMMARY_USER,
-)
+
+SUMMARY_LIMIT = 150
+
+
+def summarize_detail(text: str, limit: int = SUMMARY_LIMIT) -> str:
+    """Use the first non-empty paragraph, capped at `limit` characters."""
+    first = next((line.strip() for line in text.splitlines() if line.strip()), "")
+    return first[:limit]
+
+
+def llm_target() -> tuple[str, str]:
+    provider = os.getenv("LLM_PROVIDER", "ollama")
+    raw_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    if provider == "ollama" and not raw_model.startswith("ollama/"):
+        return provider, f"ollama/{raw_model}"
+    return provider, raw_model
 
 
 async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str, birth_date: str, birth_hour: int, birth_tz: str = "Asia/Tokyo") -> dict[str, Any]:
@@ -60,14 +73,12 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
 
             ctx_data = birth_analysis | gogaku
             prompts_detail_user = render_life_analysis(ctx_data, TEMPLATE_DETAIL_USER)
-            prompts_summary_user = render_life_analysis(ctx_data, TEMPLATE_SUMMARY_USER)
 
-            # 結果取得。LOGは別セッションで👇の方で実施
-            adapter_detail = litellm_adapter.LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash")  # model="gemini/gemini-2.5-pro"
-            llm_response_detail = await adapter_detail.make_analysis(user_id=user_id, system_prompt=TEMPLATE_DETAIL_SYSTEM, user_prompt=prompts_detail_user)
-
-            adapter_summary = litellm_adapter.LiteLlmAdapter(provider="vertex_ai", model="gemini/gemini-2.5-flash-lite")
-            llm_response_summary = await adapter_summary.make_analysis(user_id=user_id, system_prompt=TEMPLATE_SUMMARY_SYSTEM, user_prompt=prompts_summary_user)
+            provider, model = llm_target()
+            adapter = litellm_adapter.LiteLlmAdapter(provider=provider, model=model)
+            llm_response_detail = await adapter.make_analysis(user_id=user_id, system_prompt=TEMPLATE_DETAIL_SYSTEM, user_prompt=prompts_detail_user)
+            detail_text = llm_response_detail.response_text if llm_response_detail else ""
+            summary_text = summarize_detail(detail_text) if detail_text else None
 
             birth_analysis = {
                 "meishiki": {
@@ -103,8 +114,8 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
                 birth_tz=birth_tz,
                 result_birth=birth_analysis,
                 result_name=name_analysis,
-                summary=llm_response_summary.response_text if llm_response_summary else None,
-                detail=llm_response_detail.response_text if llm_response_detail else None,
+                summary=summary_text,
+                detail=detail_text or None,
             )
             session.add(obj)
             await session.commit()
@@ -116,7 +127,6 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
             async with db.SessionLocal() as session_log:
                 try:
                     session_log.add(llm_response_detail)
-                    session_log.add(llm_response_summary)
                     await session_log.commit()
                 except Exception:
                     await session_log.rollback()
