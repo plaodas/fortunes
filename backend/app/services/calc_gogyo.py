@@ -8,7 +8,7 @@
 を数えて、最終的に 木・火・土・金・水の強弱 を出します。
 """
 
-from .constants import BRANCH_TO_MAIN_STEM, STEM_TO_ELEMENT
+from .constants import HIDDEN_STEMS, STEM_TO_ELEMENT
 
 
 # 五行カウンターの初期化
@@ -30,10 +30,9 @@ def _add_pillar_to_wuxing(pillar: str, wuxing: dict[str, int]) -> dict[str, int]
     if stem_ele:
         wuxing[stem_ele] += 1
 
-    # 十二支の五行（主蔵干）
-    main_stem = BRANCH_TO_MAIN_STEM.get(branch)
-    if main_stem:
-        branch_ele = STEM_TO_ELEMENT.get(main_stem)
+    # 十二支の蔵干は本気・中気・余気をすべて 1 とする
+    for hidden, _is_main in HIDDEN_STEMS.get(branch, ()):
+        branch_ele = STEM_TO_ELEMENT.get(hidden)
         if branch_ele:
             wuxing[branch_ele] += 1
 

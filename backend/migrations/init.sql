@@ -46,14 +46,17 @@ CREATE TABLE IF NOT EXISTS kanji (
     strokes_text TEXT,
     strokes_min INTEGER,
     strokes_max INTEGER,
+    strokes_kangxi INTEGER,
     source TEXT
 );
+ALTER TABLE kanji ADD COLUMN IF NOT EXISTS strokes_kangxi INTEGER;
 CREATE INDEX IF NOT EXISTS idx_kanji_codepoint ON kanji(codepoint);
 COMMENT ON COLUMN kanji.char IS '漢字一文字';
 COMMENT ON COLUMN kanji.codepoint IS 'Unicode codepoint (e.g., U+4E00)';
 COMMENT ON COLUMN kanji.strokes_text IS '元データの画数表記';
 COMMENT ON COLUMN kanji.strokes_min IS '最小画数';
 COMMENT ON COLUMN kanji.strokes_max IS '最大画数';
+COMMENT ON COLUMN kanji.strokes_kangxi IS '康熙画数。五格の計算に使う';
 COMMENT ON COLUMN kanji.source IS 'データソース情報';
 
 CREATE TABLE IF NOT EXISTS llm_responses (

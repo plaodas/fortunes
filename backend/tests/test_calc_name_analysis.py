@@ -55,3 +55,22 @@ def test_gogaku():
             },
         }
     }
+
+
+def test_gogaku_kumazaki_one_character_names():
+    single = get_gogaku([("太", 4)], [("郎", 9)])
+    assert single["五格"]["天格"]["値"] == 5
+    assert single["五格"]["地格"]["値"] == 10
+    assert single["五格"]["人格"]["値"] == 13
+    assert single["五格"]["総格"]["値"] == 13
+    assert single["五格"]["外格"]["値"] == 2
+
+    one_sei = get_gogaku([("山", 3)], [("太", 4), ("郎", 9)])
+    assert one_sei["五格"]["天格"]["値"] == 4
+    assert one_sei["五格"]["地格"]["値"] == 13
+    assert one_sei["五格"]["外格"]["値"] == 10
+
+    one_mei = get_gogaku([("山", 3), ("田", 5)], [("郎", 9)])
+    assert one_mei["五格"]["地格"]["値"] == 10
+    assert one_mei["五格"]["外格"]["値"] == 4
+    assert one_mei["五格"]["総格"]["値"] == 17

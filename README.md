@@ -109,6 +109,31 @@ docker compose up --build -d
 # DBのマイグレーション
 ./scripts/init_db.sh
 ```
+
+`./scripts/init_db.sh` はホストの `psql` と `pg_restore` を `localhost:5432` に向けます。Ubuntu では `postgresql-client` に入っています。
+
+```bash
+sudo apt install postgresql-client
+```
+
+`db` コンテナは PostgreSQL 15 です。`backend/migrations/kanji.dump` はアーカイブ形式 1.15 なので、コンテナ内の `pg_restore` では読めません。ホストのクライアントも 15 以前のときは、公開ポートへ PostgreSQL 17 の `pg_restore` で戻します。
+
+```bash
+docker run --rm --network host -e PGPASSWORD=password \
+  -v "$PWD/backend/migrations:/dump:ro" \
+  postgres:17 \
+  pg_restore -h 127.0.0.1 -U postgres -d fortunes \
+  --clean --no-owner --no-privileges -v /dump/kanji.dump
+```
+
+先頭の `SET transaction_timeout = 0;` は PostgreSQL 15 に無いパラメータです。`errors ignored on restore: 1` が出ても、テーブル作成とデータの投入はその後に完了します。
+
+このダンプの `kanji` 定義に `strokes_kangxi` はありません。`--clean` のあと、康熙画数を入れます。
+
+```bash
+docker compose exec backend bash -lc "PYTHONPATH=/app python /app/import_kangxi.py"
+```
+
 PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja_JP.UTF-8'で指定。
 誕生日時は内部でUTCとして保存し、指定されたtimezoneに戻して返しています。
 
@@ -157,9 +182,10 @@ docker compose up --build -d
 
 ### 開発環境用ツールのインストール
 - リンター、コードフォーマッターを使用しています
-pre-commitでコミット時に実行するので、ホストOSで以下のコマンドを実行してインストールしてください
+pre-commitでコミット時に実行するので、ホストOSで以下のコマンドを実行してインストールしてください。Cursor のコミットもこのフックを通ります。チェックは CI と同じで、`ruff format`、`isort`、`black` の順です。
 ```
 pip install -r backend/dev-requirements.txt
+pre-commit install
 ```
 
 ## その他・メモ
@@ -279,16 +305,19 @@ $ docker compose exec backend bash -lc "PYTHONPATH=/app  python -m app.worker"
 
 $ curl -X POST http://localhost:8000/analyze/enqueue \
   -H "Content-Type: application/json" \
-  -d '{"name_sei":"太","name_mei":"郎","birth_date":"1990-01-01","birth_hour":12, "birth_tz":"Asia/Tokyo"}'
+  -d '{"name_sei":"太","name_mei":"郎","birth_date":"1990-01-01","birth_hour":12, "birth_tz":"Asia/Tokyo", "sex":"male"}'
 ```
 
 
 
 
 ## 漢字の画数DBについて
-漢字の画数は[漢字画数データベース](https://kanji-database.sourceforge.net/database/strokes.html)からダウンロードさせていただきました。
+五格は康熙画数で計算します。現代の画数（最小・最大）とは別です。
 
-- ファイル：backend/migrations/ucs-strokes.txt,v
-- 漢字画数インポート方法
+- 現代画数: [漢字画数データベース](https://kanji-database.sourceforge.net/database/strokes.html) の `backend/migrations/ucs-strokes.txt,v`
   `PYTHONPATH=./backend python backend/import_kanji.py`
+- 康熙画数: [Unicode Unihan](https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip) の `kRSUnicode`（康熙部首番号）に部首画数を足したもの。`backend/migrations/kangxi-strokes.txt`
+  `PYTHONPATH=./backend python backend/import_kangxi.py`
+
+字が無い、または康熙画数が無い姓名は鑑定を受け付けません。大運には性別（`sex`: `male` / `female`）が必要です。
 
