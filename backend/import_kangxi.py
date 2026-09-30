@@ -92,30 +92,34 @@ def parse_line(line: str) -> tuple[str, str, int] | None:
 
 
 async def import_file(path: str) -> None:
+    stmt = text(
+        """
+        INSERT INTO kanji (char, codepoint, strokes_kangxi, source)
+        VALUES (:char, :codepoint, :strokes, :source)
+        ON CONFLICT (char) DO UPDATE
+          SET strokes_kangxi = EXCLUDED.strokes_kangxi
+        """
+    )
+    updated = 0
+    batch: list[dict] = []
     async with db.engine.begin() as conn:
         await conn.execute(text("ALTER TABLE kanji ADD COLUMN IF NOT EXISTS strokes_kangxi INTEGER"))
-    updated = 0
-    with open(path, encoding="utf-8") as handle:
-        for line in handle:
-            rec = parse_line(line)
-            if rec is None:
-                continue
-            char, codepoint, strokes = rec
-            async with db.engine.begin() as conn:
-                await conn.execute(
-                    text(
-                        """
-                        INSERT INTO kanji (char, codepoint, strokes_kangxi, source)
-                        VALUES (:char, :codepoint, :strokes, :source)
-                        ON CONFLICT (char) DO UPDATE
-                          SET strokes_kangxi = EXCLUDED.strokes_kangxi
-                        """
-                    ),
-                    {"char": char, "codepoint": codepoint, "strokes": strokes, "source": "unihan-kRSKangXi"},
-                )
-            updated += 1
-            if updated % 2000 == 0:
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                rec = parse_line(line)
+                if rec is None:
+                    continue
+                char, codepoint, strokes = rec
+                batch.append({"char": char, "codepoint": codepoint, "strokes": strokes, "source": "unihan-kRSKangXi"})
+                if len(batch) < 2000:
+                    continue
+                await conn.execute(stmt, batch)
+                updated += len(batch)
+                batch.clear()
                 print(f"Updated {updated} rows...")
+        if batch:
+            await conn.execute(stmt, batch)
+            updated += len(batch)
     print(f"Done. Updated {updated} rows.")
 
 

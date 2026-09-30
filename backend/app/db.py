@@ -94,6 +94,16 @@ class _EngineProxy:
     def __init__(self) -> None:
         self.sync_engine = _SyncEngineDisposer()
 
+    def begin(self):
+        _ensure_engine_and_maker()
+        assert _engine is not None
+        return _engine.begin()
+
+    def connect(self):
+        _ensure_engine_and_maker()
+        assert _engine is not None
+        return _engine.connect()
+
 
 # Export `engine` so tests importing `from app.db import engine` succeed.
 engine = _EngineProxy()

@@ -109,6 +109,31 @@ docker compose up --build -d
 # DBのマイグレーション
 ./scripts/init_db.sh
 ```
+
+`./scripts/init_db.sh` はホストの `psql` と `pg_restore` を `localhost:5432` に向けます。Ubuntu では `postgresql-client` に入っています。
+
+```bash
+sudo apt install postgresql-client
+```
+
+`db` コンテナは PostgreSQL 15 です。`backend/migrations/kanji.dump` はアーカイブ形式 1.15 なので、コンテナ内の `pg_restore` では読めません。ホストのクライアントも 15 以前のときは、公開ポートへ PostgreSQL 17 の `pg_restore` で戻します。
+
+```bash
+docker run --rm --network host -e PGPASSWORD=password \
+  -v "$PWD/backend/migrations:/dump:ro" \
+  postgres:17 \
+  pg_restore -h 127.0.0.1 -U postgres -d fortunes \
+  --clean --no-owner --no-privileges -v /dump/kanji.dump
+```
+
+先頭の `SET transaction_timeout = 0;` は PostgreSQL 15 に無いパラメータです。`errors ignored on restore: 1` が出ても、テーブル作成とデータの投入はその後に完了します。
+
+このダンプの `kanji` 定義に `strokes_kangxi` はありません。`--clean` のあと、康熙画数を入れます。
+
+```bash
+docker compose exec backend bash -lc "PYTHONPATH=/app python /app/import_kangxi.py"
+```
+
 PostgreSQLのlocale：ja_JP.UTF-8、futuresデータベースの collationも'ja_JP.UTF-8'で指定。
 誕生日時は内部でUTCとして保存し、指定されたtimezoneに戻して返しています。
 
