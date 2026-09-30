@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -19,12 +20,20 @@ from app.services.prompts.template_life_analysis import (
 )
 
 SUMMARY_LIMIT = 150
+_MARKUP_LINE = re.compile(r"^(?:#{1,6}\s*\S.*|([-*_])\1{2,})$")
 
 
 def summarize_detail(text: str, limit: int = SUMMARY_LIMIT) -> str:
-    """Use the first non-empty paragraph, capped at `limit` characters."""
-    first = next((line.strip() for line in text.splitlines() if line.strip()), "")
-    return first[:limit]
+    """Use the first non-empty paragraph, capped at `limit` characters.
+
+    Markdown headings and horizontal rules are skipped so a title line is not stored as the summary.
+    """
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or _MARKUP_LINE.match(line):
+            continue
+        return line[:limit]
+    return ""
 
 
 def llm_target() -> tuple[str, str]:

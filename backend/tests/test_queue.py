@@ -195,6 +195,11 @@ def fake_session_local(monkeypatch: pytest.MonkeyPatch, fake_session: type) -> t
     return fake_session
 
 
+def test_summarize_detail_skips_markdown_heading() -> None:
+    text = "### 旅の始まりの情景\n\n旅人は静かな桃源郷の入口に立つ。春の風が肌に優しく触れる。\n"
+    assert tasks_module.summarize_detail(text) == "旅人は静かな桃源郷の入口に立つ。春の風が肌に優しく触れる。"
+
+
 @pytest.mark.anyio
 async def test_process_analysis_creates_and_returns_id(fake_llm, fake_session_local) -> None:
     res = await tasks_module.process_analysis(1, {}, "太", "郎", "1990-01-01", 12, "male")
