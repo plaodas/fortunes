@@ -33,7 +33,7 @@ def summarize_detail(text: str, limit: int = SUMMARY_LIMIT) -> str:
 
 def llm_target() -> tuple[str, str]:
     provider = os.getenv("LLM_PROVIDER", "ollama")
-    raw_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    raw_model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
     if provider == "ollama" and not raw_model.startswith("ollama/"):
         return provider, f"ollama/{raw_model}"
     return provider, raw_model
