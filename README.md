@@ -68,8 +68,8 @@ flowchart TD
 
   user <-->|JWT| frontend
   frontend <--> backend
-  backend <--> worker
-  worker <--> redis
+  backend <--> redis
+  redis <--> worker
   backend <--> db
   backend --> monitor
   worker <--> ollama
