@@ -64,10 +64,10 @@ async def test_qwen3_sends_think_false(ollama):
 
 @pytest.mark.asyncio
 async def test_qwen25_omits_think(ollama):
-    await ollama._call_llm("ollama/qwen3.5:4b", 0.8, 0, MESSAGES)
+    await ollama._call_llm("ollama/qwen2.5:3b", 0.8, 0, MESSAGES)
 
     assert "think" not in _Client.seen["json"]
-    assert _Client.seen["json"]["model"] == "qwen3.5:4b"
+    assert _Client.seen["json"]["model"] == "qwen2.5:3b"
 
 
 @pytest.mark.asyncio
