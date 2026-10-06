@@ -48,10 +48,10 @@ flowchart TD
       🔵鑑定結果生成
     `"]
     worker["`worker（arq）
-      🔵ジョブキュー管理
+      🔵ジョブの実行
     `"]
     redis["`redis
-      🔵ジョブ情報保存
+      🔵ジョブキューと結果の保存
     `"]
     db["`db（postgresql）
       🔵鑑定履歴保存
