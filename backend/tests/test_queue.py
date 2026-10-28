@@ -141,8 +141,8 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch) -> type:
 
     FakeLLMResponse.call_count = 0
     monkeypatch.setattr(
-        tasks_module.litellm_adapter,
-        "LiteLlmAdapter",
+        tasks_module.ollama_adapter,
+        "OllamaAdapter",
         FakeLLMResponse,
     )
     return FakeLLMResponse

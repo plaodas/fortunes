@@ -33,8 +33,8 @@ def ollama_chat_body(model: str, messages: list[dict[str, str]], temperature: fl
     return body
 
 
-class LiteLlmAdapter:
-    """Ollama の /api/chat を呼ぶ。クラス名は既存の呼び出しとテスト用フェイクに合わせている。"""
+class OllamaAdapter:
+    """Ollama の /api/chat を直接呼ぶ。"""
 
     def __init__(
         self,
@@ -101,7 +101,7 @@ class LiteLlmAdapter:
         raise last_error
 
     def _extract_text_from_response(self, response_obj: dict[str, Any]) -> str:
-        """Ollama の message.content、または既存フェイクの choices から本文を取る。"""
+        """Ollama の message.content、またはテスト用フェイクの choices から本文を取る。"""
         text = _message_content(response_obj)
         if text is None or not str(text).strip():
             raise RuntimeError("LLM response content is empty")

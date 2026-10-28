@@ -44,7 +44,7 @@ flowchart TD
     backend["`backend（FastAPI）
       🔵ドメインロジック：
         命式計算、五行、五格
-      🔵LiteLLM用のプロンプト生成
+      🔵鑑定文用のプロンプト生成
       🔵鑑定結果生成
     `"]
     worker["`worker（arq）
@@ -209,7 +209,7 @@ docker compose -f docker-compose.yml -f docker-compose.override.yml up --build
 鑑定文は Ollama の 1 モデルを 1 回だけ呼んで作ります。履歴用の短いサマリは、その詳細文の先頭段落を 150 文字で切ったものです。
 
 - 既定モデル: `qwen3.5:9b`（`OLLAMA_MODEL`）
-- 接続先: `http://ollama:11434`（`OLLAMA_API_BASE`）。LiteLLM が `ollama/<model>` として呼びます
+- 接続先: `http://ollama:11434`（`OLLAMA_API_BASE`）。worker が Ollama の `/api/chat` を直接呼びます。モデル名の `ollama/` 接頭辞は呼び出し前に外します
 - 詳細文の目標は 600〜800 文字です。プロンプトは[鑑定文](backend/app/services/prompts/template_life_analysis.py)
 
 メモリが足りないときは `OLLAMA_MODEL=qwen3.5:4b` にして、`docker compose up -d` で pull し直します。

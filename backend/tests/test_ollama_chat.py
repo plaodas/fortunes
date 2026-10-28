@@ -1,8 +1,8 @@
 import pytest
-from app.services.litellm_adapter import LiteLlmAdapter
+from app.services.ollama_adapter import OllamaAdapter
 
 # conftest が _call_llm をフェイクに差し替える前の実装を保持する。
-_real_call_llm = LiteLlmAdapter._call_llm
+_real_call_llm = OllamaAdapter._call_llm
 
 MESSAGES = [{"role": "user", "content": "こんにちは"}]
 
@@ -38,13 +38,13 @@ class _Client:
 
 @pytest.fixture
 def ollama(monkeypatch):
-    import app.services.litellm_adapter as adapter_mod
+    import app.services.ollama_adapter as adapter_mod
 
     monkeypatch.setattr(adapter_mod.httpx, "AsyncClient", _Client)
-    monkeypatch.setattr(LiteLlmAdapter, "_call_llm", _real_call_llm)
+    monkeypatch.setattr(OllamaAdapter, "_call_llm", _real_call_llm)
     _Client.seen = {}
     _Client.payload = {"message": {"role": "assistant", "content": "物語"}, "model": "qwen3.5:4b"}
-    adapter = LiteLlmAdapter(provider="ollama", model="ollama/qwen3.5:4b")
+    adapter = OllamaAdapter(provider="ollama", model="ollama/qwen3.5:4b")
     adapter.api_base = "http://ollama:11434"
     return adapter
 
