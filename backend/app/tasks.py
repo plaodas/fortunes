@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 from app import db, models
-from app.services import litellm_adapter
+from app.services import ollama_adapter
 from app.services.make_story import render_life_analysis
 from app.services.prompts.template_life_analysis import (
     TEMPLATE_DETAIL_SYSTEM,
@@ -69,7 +69,7 @@ async def process_analysis(ctx: Any, user_id: int, name_sei: str, name_mei: str,
             prompts_detail_user = render_life_analysis(ctx_data, TEMPLATE_DETAIL_USER)
 
             provider, model = llm_target()
-            adapter = litellm_adapter.LiteLlmAdapter(provider=provider, model=model)
+            adapter = ollama_adapter.OllamaAdapter(provider=provider, model=model)
             llm_response_detail = await adapter.make_analysis(user_id=user_id, system_prompt=TEMPLATE_DETAIL_SYSTEM, user_prompt=prompts_detail_user)
             detail_text = llm_response_detail.response_text if llm_response_detail else ""
             summary_text = summarize_detail(detail_text) if detail_text else None

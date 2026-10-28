@@ -13,13 +13,13 @@ from tests.utils.fake_llm_response import fake_llm_response
 pytest_plugins = ("pytest_asyncio",)
 
 
-def _patch_litellm(monkeypatch):
-    """Patch LiteLlmAdapter to return deterministic fake responses."""
+def _patch_ollama(monkeypatch):
+    """Patch OllamaAdapter to return deterministic fake responses."""
 
     async def _fake_call_llm(ctx: Any, model: str, temperature: float, num_retries: int, messages: list[dict[str, str]]) -> dict[str, Any]:
         return fake_llm_response(model=model, messages=messages)
 
-    monkeypatch.setattr("app.services.litellm_adapter.LiteLlmAdapter._call_llm", _fake_call_llm)
+    monkeypatch.setattr("app.services.ollama_adapter.OllamaAdapter._call_llm", _fake_call_llm)
 
 
 def _patch_hashes(monkeypatch):
@@ -95,7 +95,7 @@ def ci_test_environment(monkeypatch):
     # ensure tests use fake LLM responses
     monkeypatch.setenv("GEMINI_API_KEY", "")
 
-    _patch_litellm(monkeypatch)
+    _patch_ollama(monkeypatch)
     _patch_hashes(monkeypatch)
     _patch_jinja(monkeypatch)
     _ensure_demo_user()
