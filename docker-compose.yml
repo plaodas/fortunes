@@ -71,7 +71,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: node:18
+    image: node:26
     working_dir: /app
     volumes:
       - ./frontend:/app
